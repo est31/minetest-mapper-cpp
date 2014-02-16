@@ -105,6 +105,7 @@ TileGenerator::TileGenerator():
 	m_shading(true),
 	m_border(0),
 	m_backend("sqlite3"),
+	m_forceGeom(false),
 	m_image(0),
 	m_xMin(INT_MAX/16-1),
 	m_xMax(INT_MIN/16+1),
@@ -133,6 +134,11 @@ TileGenerator::~TileGenerator()
 void TileGenerator::setBgColor(const std::string &bgColor)
 {
 	m_bgColor = parseColor(bgColor);
+}
+
+void TileGenerator::setForceGeom(bool forceGeom)
+{
+	m_forceGeom = forceGeom;
 }
 
 void TileGenerator::setScaleColor(const std::string &scaleColor)
@@ -325,7 +331,7 @@ void TileGenerator::openDb(const std::string &input)
 void TileGenerator::loadBlocks()
 {
 	if (verboseCoordinates) {
-		cout << "Requested Geometry: "
+		cout << "Requested Geometry:  "
 			<< m_reqXMin*16 << "," << m_reqYMin*16+m_reqYMinNode << "," << m_reqZMin*16 << ".."
 			<< m_reqXMax*16+15 << "," << m_reqYMax*16+m_reqYMaxNode << "," << m_reqZMax*16+15
 			<< "    ("
@@ -358,6 +364,21 @@ void TileGenerator::loadBlocks()
 			m_zMax = pos.z;
 		}
 		m_positions.push_back(std::pair<int, int>(pos.x, pos.z));
+	}
+	if (m_forceGeom) {
+		if (verboseCoordinates) {
+			cout << "Minimal Geometry:    "
+				<< m_xMin*16 << "," << m_yMin*16+m_reqYMinNode << "," << m_zMin*16 << ".."
+				<< m_xMax*16+15 << "," << m_yMax*16+m_reqYMaxNode << "," << m_zMax*16+15
+				<< "    ("
+				<< m_xMin << "," << m_yMin << "," << m_zMin << ".."
+				<< m_xMax << "," << m_yMax << "," << m_zMax
+				<< ")\n";
+		}
+		m_xMin = m_reqXMin;
+		m_xMax = m_reqXMax;
+		m_zMin = m_reqZMin;
+		m_zMax = m_reqZMax;
 	}
 	if (verboseCoordinates) {
 		cout << "Map Output Geometry: "

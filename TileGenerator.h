@@ -79,6 +79,7 @@ public:
 	void setGeometry(int x, int y, int w, int h);
 	void setMinY(int y);
 	void setMaxY(int y);
+	void setForceGeom(bool forceGeom);
 	void parseColorsFile(const std::string &fileName);
 	void setBackend(std::string backend);
 	void generate(const std::string &input, const std::string &output);
@@ -116,6 +117,7 @@ private:
 	bool m_shading;
 	int m_border;
 	std::string m_backend;
+	bool m_forceGeom;
 
 	DB *m_db;
 	gdImagePtr m_image;

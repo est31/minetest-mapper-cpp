@@ -35,6 +35,7 @@ void usage()
 			"  --max-y <y>\n"
 			"  --backend <sqlite3/leveldb>\n"
 			"  --geometry x:y+w+h\n"
+		        "  --forcegeometry\n"
 			"  --verbose\n"
 			"Color format: '#000000'\n";
 	std::cout << usage_text;
@@ -56,6 +57,7 @@ int main(int argc, char *argv[])
 		{"drawscale", no_argument, 0, 'S'},
 		{"noshading", no_argument, 0, 'H'},
 		{"geometry", required_argument, 0, 'g'},
+		{"forcegeometry", no_argument, 0, 'G'},
 		{"min-y", required_argument, 0, 'a'},
 		{"max-y", required_argument, 0, 'c'},
 		{"backend", required_argument, 0, 'd'},
@@ -144,6 +146,9 @@ int main(int argc, char *argv[])
 					}
 					generator.setGeometry(x, y, w, h);
 				}
+				break;
+			case 'G':
+				generator.setForceGeom(true);
 				break;
 			case 'd':
 				generator.setBackend(optarg);
