@@ -106,16 +106,20 @@ TileGenerator::TileGenerator():
 	m_border(0),
 	m_backend("sqlite3"),
 	m_image(0),
-	m_xMin(INT_MAX),
-	m_xMax(INT_MIN),
-	m_zMin(INT_MAX),
-	m_zMax(INT_MIN),
-	m_yMin(INT_MIN),
-	m_yMax(INT_MAX),
-	m_geomX(INT_MIN),
-	m_geomY(INT_MIN),
-	m_geomX2(INT_MAX),
-	m_geomY2(INT_MAX)
+	m_xMin(INT_MAX/16-1),
+	m_xMax(INT_MIN/16+1),
+	m_zMin(INT_MAX/16-1),
+	m_zMax(INT_MIN/16+1),
+	m_yMin(INT_MAX/16-1),
+	m_yMax(INT_MIN/16+1),
+	m_reqXMin(INT_MIN/16+1),
+	m_reqXMax(INT_MAX/16-1),
+	m_reqYMin(INT_MIN/16+1),
+	m_reqYMax(INT_MAX/16-1),
+	m_reqZMin(INT_MIN/16+1),
+	m_reqZMax(INT_MAX/16-1),
+	m_reqYMinNode(0),
+	m_reqYMaxNode(15)
 {
 	string colors_txt_data(reinterpret_cast<char *>(colors_txt), colors_txt_len);
 	istringstream colors_stream(colors_txt_data);
@@ -190,43 +194,55 @@ void TileGenerator::setShading(bool shading)
 void TileGenerator::setGeometry(int x, int y, int w, int h)
 {
 	if (x > 0) {
-		m_geomX = x / 16;
+		m_reqXMin = x / 16;
 	}
 	else {
-		m_geomX = (x - 15) / 16;
+		m_reqXMin = (x - 15) / 16;
 	}
 	if (y > 0) {
-		m_geomY = y / 16;
+		m_reqZMin = y / 16;
 	}
 	else {
-		m_geomY = (y - 15) / 16;
+		m_reqZMin = (y - 15) / 16;
 	}
 
 	int x2 = x + w;
 	int y2 = y + h;
 
 	if (x2 > 0) {
-		m_geomX2 = x2 / 16;
+		m_reqXMax = x2 / 16;
 	}
 	else {
-		m_geomX2 = (x2 - 15) / 16;
+		m_reqXMax = (x2 - 15) / 16;
 	}
 	if (y2 > 0) {
-		m_geomY2 = y2 / 16;
+		m_reqZMax = y2 / 16;
 	}
 	else {
-		m_geomY2 = (y2 - 15) / 16;
+		m_reqZMax = (y2 - 15) / 16;
 	}
 }
 
 void TileGenerator::setMinY(int y)
 {
-	m_yMin = y;
+	if (y > 0) {
+		m_reqYMin = y / 16;
+	}
+	else {
+		m_reqYMin = (y - 15) / 16;
+	}
+	m_reqYMinNode = y - 16 * m_reqYMin;
 }
 
 void TileGenerator::setMaxY(int y)
 {
-	m_yMax = y;
+	if (y > 0) {
+		m_reqYMax = y / 16;
+	}
+	else {
+		m_reqYMax = (y - 15) / 16;
+	}
+	m_reqYMaxNode = y - 16 * m_reqYMax;
 }
 
 void TileGenerator::parseColorsFile(const std::string &fileName)
@@ -310,27 +326,24 @@ void TileGenerator::loadBlocks()
 {
 	if (verboseCoordinates) {
 		cout << "Requested Geometry: "
-			<< m_geomX*16 << "," << m_geomY*16 << ".." << m_geomX2*16+15 << "," << m_geomY2*16+15
+			<< m_reqXMin*16 << "," << m_reqYMin*16+m_reqYMinNode << "," << m_reqZMin*16 << ".."
+			<< m_reqXMax*16+15 << "," << m_reqYMax*16+m_reqYMaxNode << "," << m_reqZMax*16+15
 			<< "    ("
-			<< m_geomX << "," << m_geomY << ".." << m_geomX2 << "," << m_geomY2
-			<< ")\n";
-		cout << "Requested height limits: "
-			<< m_yMin << ".." << m_yMax
-			<< "    ("
-			<< (m_yMin<0?(m_yMin-15)/16:m_yMin/16) << ".." << (m_yMax<0?(m_yMax-15)/16:m_yMax/16)
+			<< m_reqXMin << "," << m_reqYMin << "," << m_reqZMin << ".."
+			<< m_reqXMax << "," << m_reqYMax << "," << m_reqZMax
 			<< ")\n";
 	}
 	std::vector<int64_t> vec = m_db->getBlockPos();
 	for(unsigned int i = 0; i < vec.size(); i++) {
 		BlockPos pos = decodeBlockPos(vec[i]);
-		if (pos.x < m_geomX || pos.x > m_geomX2 || pos.z < m_geomY || pos.z > m_geomY2) {
+		if (pos.x < m_reqXMin || pos.x > m_reqXMax || pos.y < m_reqYMin || pos.y > m_reqYMax || pos.z < m_reqZMin || pos.z > m_reqZMax) {
 			continue;
 		}
 		if (pos.y < m_yMin) {
-			continue;
+			m_yMin = pos.y;
 		}
 		if (pos.y > m_yMax) {
-			continue;
+			m_yMax = pos.y;
 		}
 		if (pos.x < m_xMin) {
 			m_xMin = pos.x;
@@ -348,9 +361,11 @@ void TileGenerator::loadBlocks()
 	}
 	if (verboseCoordinates) {
 		cout << "Map Output Geometry: "
-			<< m_xMin*16 << "," << m_zMin*16 << ".." << m_xMax*16+15 << "," << m_zMax*16+15
+			<< m_xMin*16 << "," << m_yMin*16+m_reqYMinNode << "," << m_zMin*16 << ".."
+			<< m_xMax*16+15 << "," << m_yMax*16+m_reqYMaxNode << "," << m_zMax*16+15
 			<< "    ("
-			<< m_xMin << "," << m_zMin << ".." << m_xMax << "," << m_zMax
+			<< m_xMin << "," << m_yMin << "," << m_zMin << ".."
+			<< m_xMax << "," << m_yMax << "," << m_zMax
 			<< ")\n";
 	}
 	m_positions.sort();
@@ -517,6 +532,8 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 	int xBegin = (pos.x - m_xMin) * 16;
 	int zBegin = (m_zMax - pos.z) * 16;
 	const unsigned char *mapData = mapBlock.c_str();
+	int minY = (pos.y < m_reqYMin) ? 16 : (pos.y > m_reqYMin) ?  0 : m_reqYMinNode;
+	int maxY = (pos.y > m_reqYMax) ? -1 : (pos.y < m_reqYMax) ? 15 : m_reqYMaxNode;
 	for (int z = 0; z < 16; ++z) {
 		int imageY = getImageY(zBegin + 15 - z);
 		for (int x = 0; x < 16; ++x) {
@@ -524,8 +541,6 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 				continue;
 			}
 			int imageX = getImageX(xBegin + x);
-			int minY = (pos.y * 16 > m_yMin) ? 0 : m_yMin - pos.y * 16;
-			int maxY = (pos.y * 16 < m_yMax) ? 15 : m_yMax - pos.y * 16;
 			for (int y = maxY; y >= minY; --y) {
 				int position = x + (y << 4) + (z << 8);
 				int content = readBlockContent(mapData, version, position);

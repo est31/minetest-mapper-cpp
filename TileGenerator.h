@@ -126,10 +126,14 @@ private:
 	int m_zMax;
 	int m_yMin;
 	int m_yMax;
-	int m_geomX;
-	int m_geomY;
-	int m_geomX2;
-	int m_geomY2;
+	int m_reqXMin;
+	int m_reqXMax;
+	int m_reqYMin;
+	int m_reqYMax;
+	int m_reqZMin;
+	int m_reqZMax;
+	int m_reqYMinNode;	// Node offset within a map block
+	int m_reqYMaxNode;	// Node offset within a map block
 	int m_mapWidth;
 	int m_mapHeight;
 	std::list<std::pair<int, int> > m_positions;
