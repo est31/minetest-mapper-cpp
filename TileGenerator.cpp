@@ -334,6 +334,8 @@ void TileGenerator::loadBlocks()
 	int mapYMin, mapYMax;
 	int mapZMin, mapZMax;
 	int geomYMin, geomYMax;
+	long long world_blocks;
+	long long map_blocks;
 	if (verboseCoordinates) {
 		cout << "Requested Geometry:   "
 			<< m_reqXMin*16 << "," << m_reqYMin*16+m_reqYMinNode << "," << m_reqZMin*16 << ".."
@@ -352,7 +354,10 @@ void TileGenerator::loadBlocks()
 	geomYMin = INT_MAX/16-1;
 	geomYMax = -INT_MIN/16+1;
 	std::vector<int64_t> vec = m_db->getBlockPos();
+	world_blocks = 0;
+	map_blocks = 0;
 	for(unsigned int i = 0; i < vec.size(); i++) {
+		world_blocks ++;
 		BlockPos pos = decodeBlockPos(vec[i]);
 		if (pos.x < mapXMin) {
 			mapXMin = pos.x;
@@ -384,6 +389,7 @@ void TileGenerator::loadBlocks()
 		if (pos.y < m_reqYMin || pos.y > m_reqYMax) {
 			continue;
 		}
+		map_blocks++;
 		if (pos.y < m_yMin) {
 			m_yMin = pos.y;
 		}
@@ -411,7 +417,7 @@ void TileGenerator::loadBlocks()
 			<< "    ("
 			<< mapXMin << "," << mapYMin << "," << mapZMin << ".."
 			<< mapXMax << "," << mapYMax << "," << mapZMax
-			<< ")\n";
+			<< ")    blocks: " << world_blocks << "\n";
 	}
 	if (m_forceGeom) {
 		if (verboseCoordinates) {
@@ -436,7 +442,7 @@ void TileGenerator::loadBlocks()
 			<< "    ("
 			<< m_xMin << "," << m_yMin << "," << m_zMin << ".."
 			<< m_xMax << "," << m_yMax << "," << m_zMax
-			<< ")\n";
+			<< ")    blocks: " << map_blocks << "\n";
 	}
 	m_positions.sort();
 	m_positions.unique();
