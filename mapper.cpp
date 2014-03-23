@@ -35,6 +35,7 @@ void usage()
 			"  --max-y <y>\n"
 			"  --backend <sqlite3/leveldb>\n"
 			"  --geometry x:y+w+h\n"
+			"  --verbose\n"
 			"Color format: '#000000'\n";
 	std::cout << usage_text;
 }
@@ -58,6 +59,7 @@ int main(int argc, char *argv[])
 		{"min-y", required_argument, 0, 'a'},
 		{"max-y", required_argument, 0, 'c'},
 		{"backend", required_argument, 0, 'd'},
+		{"verbose", no_argument, 0, 'v'},
 	};
 
 	string input;
@@ -107,6 +109,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'S':
 				generator.setDrawScale(true);
+				break;
+			case 'v':
+				generator.verboseCoordinates = true;
 				break;
 			case 'H':
 				generator.setShading(false);

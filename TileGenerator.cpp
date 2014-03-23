@@ -94,6 +94,7 @@ static inline int colorSafeBounds(int color)
 }
 
 TileGenerator::TileGenerator():
+	verboseCoordinates(false),
 	m_bgColor(255, 255, 255),
 	m_scaleColor(0, 0, 0),
 	m_originColor(255, 0, 0),
@@ -307,6 +308,18 @@ void TileGenerator::openDb(const std::string &input)
 
 void TileGenerator::loadBlocks()
 {
+	if (verboseCoordinates) {
+		cout << "Requested Geometry: "
+			<< m_geomX*16 << "," << m_geomY*16 << ".." << m_geomX2*16+15 << "," << m_geomY2*16+15
+			<< "    ("
+			<< m_geomX << "," << m_geomY << ".." << m_geomX2 << "," << m_geomY2
+			<< ")\n";
+		cout << "Requested height limits: "
+			<< m_yMin << ".." << m_yMax
+			<< "    ("
+			<< (m_yMin<0?(m_yMin-15)/16:m_yMin/16) << ".." << (m_yMax<0?(m_yMax-15)/16:m_yMax/16)
+			<< ")\n";
+	}
 	std::vector<int64_t> vec = m_db->getBlockPos();
 	for(unsigned int i = 0; i < vec.size(); i++) {
 		BlockPos pos = decodeBlockPos(vec[i]);
@@ -332,6 +345,13 @@ void TileGenerator::loadBlocks()
 			m_zMax = pos.z;
 		}
 		m_positions.push_back(std::pair<int, int>(pos.x, pos.z));
+	}
+	if (verboseCoordinates) {
+		cout << "Map Output Geometry: "
+			<< m_xMin*16 << "," << m_zMin*16 << ".." << m_xMax*16+15 << "," << m_zMax*16+15
+			<< "    ("
+			<< m_xMin << "," << m_zMin << ".." << m_xMax << "," << m_zMax
+			<< ")\n";
 	}
 	m_positions.sort();
 	m_positions.unique();

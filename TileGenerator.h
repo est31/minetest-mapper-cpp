@@ -102,6 +102,9 @@ private:
 	int getImageX(int val) const;
 	int getImageY(int val) const;
 
+public:
+	bool verboseCoordinates;
+
 private:
 	Color m_bgColor;
 	Color m_scaleColor;
