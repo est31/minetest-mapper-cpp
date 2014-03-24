@@ -32,6 +32,11 @@ struct BlockPos {
 	int x;
 	int y;
 	int z;
+	// operator< should order the positions in the
+	// order the corresponding pixels are generated:
+	// First (most significant): z coordinate, descending (i.e. reversed)
+	// Then                    : x coordinate, ascending
+	// Last (least significant): y coordinate, descending (i.e. reversed)
 	bool operator<(const BlockPos& p) const
 	{
 		if (z > p.z) {
@@ -40,19 +45,32 @@ struct BlockPos {
 		if (z < p.z) {
 			return false;
 		}
+		if (x < p.x) {
+			return true;
+		}
+		if (x > p.x) {
+			return false;
+		}
 		if (y > p.y) {
 			return true;
 		}
 		if (y < p.y) {
 			return false;
 		}
-		if (x > p.x) {
-			return true;
-		}
-		if (x < p.x) {
+		return false;
+	}
+	bool operator==(const BlockPos& p) const
+	{
+		if (z != p.z) {
 			return false;
 		}
-		return false;
+		if (y != p.y) {
+			return false;
+		}
+		if (x != p.x) {
+			return false;
+		}
+		return true;
 	}
 };
 
@@ -92,6 +110,7 @@ private:
 	void createImage();
 	void renderMap();
 	std::list<int> getZValueList() const;
+	Block getBlockOnPos(BlockPos pos);
 	std::map<int, BlockList> getBlocksOnZ(int zPos);
 	void renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version);
 	void renderShading(int zPos);
@@ -105,6 +124,7 @@ private:
 
 public:
 	bool verboseCoordinates;
+	bool verboseStatistics;
 
 private:
 	Color m_bgColor;
@@ -138,7 +158,7 @@ private:
 	int m_reqYMaxNode;	// Node offset within a map block
 	int m_mapWidth;
 	int m_mapHeight;
-	std::list<std::pair<int, int> > m_positions;
+	std::list<BlockPos> m_positions;
 	std::map<int, std::string> m_nameMap;
 	ColorMap m_colors;
 	uint16_t m_readedPixels[16];

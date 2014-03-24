@@ -95,6 +95,7 @@ static inline int colorSafeBounds(int color)
 
 TileGenerator::TileGenerator():
 	verboseCoordinates(false),
+	verboseStatistics(false),
 	m_bgColor(255, 255, 255),
 	m_scaleColor(0, 0, 0),
 	m_originColor(255, 0, 0),
@@ -408,7 +409,7 @@ void TileGenerator::loadBlocks()
 		if (pos.z > m_zMax) {
 			m_zMax = pos.z;
 		}
-		m_positions.push_back(std::pair<int, int>(pos.x, pos.z));
+		m_positions.push_back(pos);
 	}
 	if (verboseCoordinates) {
 		cout << "World Geometry:       "
@@ -445,7 +446,6 @@ void TileGenerator::loadBlocks()
 			<< ")    blocks: " << map_blocks << "\n";
 	}
 	m_positions.sort();
-	m_positions.unique();
 }
 
 inline BlockPos TileGenerator::decodeBlockPos(int64_t blockId) const
@@ -484,123 +484,159 @@ std::map<int, TileGenerator::BlockList> TileGenerator::getBlocksOnZ(int zPos)
 	return out;
 }
 
+TileGenerator::Block TileGenerator::getBlockOnPos(BlockPos pos)
+{
+	int64_t iPos;
+	iPos =  pos.x;
+	iPos += static_cast<int64_t>(pos.y) << 12;
+	iPos += static_cast<int64_t>(pos.z) << 24;
+	DBBlock in = m_db->getBlockOnPos(iPos);
+	Block out(pos,(const unsigned char *)"");
+
+	if (!in.second.empty()) {
+		out = Block(decodeBlockPos(in.first), in.second);
+		// Verify. Just to be sure...
+		if (pos.x != out.first.x || pos.y != out.first.y || pos.z != out.first.z) {
+			std::ostringstream oss;
+			oss << "Got unexpexted block: "
+			    << out.first.x << "," << out.first.y << "," << out.first.z
+			    << " from database. Requested: "
+			    << pos.x << "," << pos.y << "," << pos.z;
+			throw std::runtime_error(oss.str());
+		}
+	}
+	else {
+		// I can't imagine this to be possible...
+		std::ostringstream oss;
+		oss << "Failed to get block: "
+		    << pos.x << "," << pos.y << "," << pos.z
+		    << " from database.";
+		throw std::runtime_error(oss.str());
+	}
+	return out;
+}
+
 void TileGenerator::renderMap()
 {
-	std::list<int> zlist = getZValueList();
-	for (std::list<int>::iterator zPosition = zlist.begin(); zPosition != zlist.end(); ++zPosition) {
-		int zPos = *zPosition;
-		std::map<int, BlockList> blocks = getBlocksOnZ(zPos);
-		for (std::list<std::pair<int, int> >::const_iterator position = m_positions.begin(); position != m_positions.end(); ++position) {
-			if (position->second != zPos) {
-				continue;
-			}
-
+	int blocks_selected = 0;
+	int blocks_rendered = 0;
+	BlockPos currentPos;
+	currentPos.x = INT_MIN;
+	currentPos.y = 0;
+	currentPos.z = INT_MIN;
+	bool allReaded = false;
+	for (std::list<BlockPos>::const_iterator position = m_positions.begin(); position != m_positions.end(); ++position) {
+		const BlockPos &pos = *position;
+		if (currentPos.x != pos.x || currentPos.z != pos.z) {
+			if (currentPos.z != pos.z && currentPos.z != INT_MIN && m_shading)
+				renderShading(currentPos.z);
 			for (int i = 0; i < 16; ++i) {
 				m_readedPixels[i] = 0;
 			}
+			currentPos = pos;
+		}
+		else if (allReaded) {
+			continue;
+		}
+		Block block = getBlockOnPos(pos);
+		blocks_selected++;
+		if (!block.second.empty()) {
+			const unsigned char *data = block.second.c_str();
+			size_t length = block.second.length();
 
-			int xPos = position->first;
-			blocks[xPos].sort();
-			const BlockList &blockStack = blocks[xPos];
-			for (BlockList::const_iterator it = blockStack.begin(); it != blockStack.end(); ++it) {
-				const BlockPos &pos = it->first;
-				const unsigned char *data = it->second.c_str();
-				size_t length = it->second.length();
+			uint8_t version = data[0];
+			//uint8_t flags = data[1];
 
-				uint8_t version = data[0];
-				//uint8_t flags = data[1];
+			size_t dataOffset = 0;
+			if (version >= 22) {
+				dataOffset = 4;
+			}
+			else {
+				dataOffset = 2;
+			}
 
-				size_t dataOffset = 0;
-				if (version >= 22) {
-					dataOffset = 4;
-				}
-				else {
-					dataOffset = 2;
-				}
+			ZlibDecompressor decompressor(data, length);
+			decompressor.setSeekPos(dataOffset);
+			ZlibDecompressor::string mapData = decompressor.decompress();
+			ZlibDecompressor::string mapMetadata = decompressor.decompress();
+			dataOffset = decompressor.seekPos();
 
-				ZlibDecompressor decompressor(data, length);
-				decompressor.setSeekPos(dataOffset);
-				ZlibDecompressor::string mapData = decompressor.decompress();
-				ZlibDecompressor::string mapMetadata = decompressor.decompress();
-				dataOffset = decompressor.seekPos();
-
-				// Skip unused data
-				if (version <= 21) {
-					dataOffset += 2;
-				}
-				if (version == 23) {
-					dataOffset += 1;
-				}
-				if (version == 24) {
-					uint8_t ver = data[dataOffset++];
-					if (ver == 1) {
-						uint16_t num = readU16(data + dataOffset);
-						dataOffset += 2;
-						dataOffset += 10 * num;
-					}
-				}
-
-				// Skip unused static objects
-				dataOffset++; // Skip static object version
-				int staticObjectCount = readU16(data + dataOffset);
+			// Skip unused data
+			if (version <= 21) {
 				dataOffset += 2;
-				for (int i = 0; i < staticObjectCount; ++i) {
-					dataOffset += 13;
-					uint16_t dataSize = readU16(data + dataOffset);
-					dataOffset += dataSize + 2;
-				}
-				dataOffset += 4; // Skip timestamp
-
-				m_blockAirId = -1;
-				m_blockIgnoreId = -1;
-				// Read mapping
-				if (version >= 22) {
-					dataOffset++; // mapping version
-					uint16_t numMappings = readU16(data + dataOffset);
+			}
+			if (version == 23) {
+				dataOffset += 1;
+			}
+			if (version == 24) {
+				uint8_t ver = data[dataOffset++];
+				if (ver == 1) {
+					uint16_t num = readU16(data + dataOffset);
 					dataOffset += 2;
-					for (int i = 0; i < numMappings; ++i) {
-						uint16_t nodeId = readU16(data + dataOffset);
-						dataOffset += 2;
-						uint16_t nameLen = readU16(data + dataOffset);
-						dataOffset += 2;
-						string name = string(reinterpret_cast<const char *>(data) + dataOffset, nameLen);
-						if (name == "air") {
-							m_blockAirId = nodeId;
-						}
-						else if (name == "ignore") {
-							m_blockIgnoreId = nodeId;
-						}
-						else {
-							m_nameMap[nodeId] = name;
-						}
-						dataOffset += nameLen;
-					}
+					dataOffset += 10 * num;
 				}
+			}
 
-				// Node timers
-				if (version >= 25) {
-					dataOffset++;
-					uint16_t numTimers = readU16(data + dataOffset);
+			// Skip unused static objects
+			dataOffset++; // Skip static object version
+			int staticObjectCount = readU16(data + dataOffset);
+			dataOffset += 2;
+			for (int i = 0; i < staticObjectCount; ++i) {
+				dataOffset += 13;
+				uint16_t dataSize = readU16(data + dataOffset);
+				dataOffset += dataSize + 2;
+			}
+			dataOffset += 4; // Skip timestamp
+
+			m_blockAirId = -1;
+			m_blockIgnoreId = -1;
+			// Read mapping
+			if (version >= 22) {
+				dataOffset++; // mapping version
+				uint16_t numMappings = readU16(data + dataOffset);
+				dataOffset += 2;
+				for (int i = 0; i < numMappings; ++i) {
+					uint16_t nodeId = readU16(data + dataOffset);
 					dataOffset += 2;
-					dataOffset += numTimers * 10;
-				}
-
-				renderMapBlock(mapData, pos, version);
-
-				bool allReaded = true;
-				for (int i = 0; i < 16; ++i) {
-					if (m_readedPixels[i] != 0xffff) {
-						allReaded = false;
+					uint16_t nameLen = readU16(data + dataOffset);
+					dataOffset += 2;
+					string name = string(reinterpret_cast<const char *>(data) + dataOffset, nameLen);
+					if (name == "air") {
+						m_blockAirId = nodeId;
 					}
+					else if (name == "ignore") {
+						m_blockIgnoreId = nodeId;
+					}
+					else {
+						m_nameMap[nodeId] = name;
+					}
+					dataOffset += nameLen;
 				}
-				if (allReaded) {
-					break;
+			}
+
+			// Node timers
+			if (version >= 25) {
+				dataOffset++;
+				uint16_t numTimers = readU16(data + dataOffset);
+				dataOffset += 2;
+				dataOffset += numTimers * 10;
+			}
+
+			renderMapBlock(mapData, pos, version);
+			blocks_rendered++;
+
+			allReaded = true;
+			for (int i = 0; i < 16; ++i) {
+				if (m_readedPixels[i] != 0xffff) {
+					allReaded = false;
 				}
 			}
 		}
-		if(m_shading)
-			renderShading(zPos);
 	}
+	if(currentPos.z != INT_MIN && m_shading)
+		renderShading(currentPos.z);
+	if (verboseStatistics)
+		cout << "Statistics:  Blocks selected: " << blocks_selected << ";  blocks rendered: " << blocks_rendered << std::endl;
 }
 
 inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version)
@@ -729,8 +765,8 @@ void TileGenerator::renderPlayers(const std::string &inputPath)
 inline std::list<int> TileGenerator::getZValueList() const
 {
 	std::list<int> zlist;
-	for (std::list<std::pair<int, int> >::const_iterator position = m_positions.begin(); position != m_positions.end(); ++position) {
-		zlist.push_back(position->second);
+	for (std::list<BlockPos>::const_iterator position = m_positions.begin(); position != m_positions.end(); ++position) {
+		zlist.push_back(position->z);
 	}
 	zlist.sort();
 	zlist.unique();

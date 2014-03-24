@@ -10,6 +10,7 @@ public:
 	DBLevelDB(const std::string &mapdir);
 	virtual std::vector<int64_t> getBlockPos();
 	virtual DBBlockList getBlocksOnZ(int zPos);
+	virtual DBBlock getBlockOnPos(int64_t iPos);
 	~DBLevelDB();
 private:
 	leveldb::DB *m_db;

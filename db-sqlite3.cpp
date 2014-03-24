@@ -77,3 +77,34 @@ DBBlockList DBSQLite3::getBlocksOnZ(int zPos)
 	return blocks;
 }
 
+DBBlock DBSQLite3::getBlockOnPos(int64_t iPos)
+{
+	std::string sql = "SELECT pos, data FROM blocks WHERE pos == ?";
+	if (!m_getBlocksOnPosStatement && sqlite3_prepare_v2(m_db, sql.c_str(), sql.length(), &m_getBlocksOnPosStatement, 0) != SQLITE_OK) {
+		throw std::runtime_error("Failed to prepare statement");
+	}
+	DBBlock block(0,(const unsigned char *)"");
+
+	sqlite3_int64 psPos = static_cast<sqlite3_int64>(iPos);
+	sqlite3_bind_int64(m_getBlocksOnPosStatement, 1, psPos);
+
+	int result = 0;
+	while (true) {
+		result = sqlite3_step(m_getBlocksOnPosStatement);
+		if(result == SQLITE_ROW) {
+			sqlite3_int64 blocknum = sqlite3_column_int64(m_getBlocksOnPosStatement, 0);
+			const unsigned char *data = reinterpret_cast<const unsigned char *>(sqlite3_column_blob(m_getBlocksOnPosStatement, 1));
+			int size = sqlite3_column_bytes(m_getBlocksOnPosStatement, 1);
+			block = DBBlock(blocknum, std::basic_string<unsigned char>(data, size));
+			break;
+		} else if (result == SQLITE_BUSY) { // Wait some time and try again
+			usleep(10000);
+		} else {
+			break;
+		}
+	}
+	sqlite3_reset(m_getBlocksOnPosStatement);
+
+	return block;
+}
+

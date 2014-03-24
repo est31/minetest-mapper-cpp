@@ -15,6 +15,7 @@ class DB {
 public:
 	virtual std::vector<int64_t> getBlockPos()=0;
 	virtual DBBlockList getBlocksOnZ(int zPos)=0;
+	virtual DBBlock getBlockOnPos(int64_t iPos)=0;
 };
 
 #endif // _DB_H

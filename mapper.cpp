@@ -114,6 +114,7 @@ int main(int argc, char *argv[])
 				break;
 			case 'v':
 				generator.verboseCoordinates = true;
+				generator.verboseStatistics = true;
 				break;
 			case 'H':
 				generator.setShading(false);

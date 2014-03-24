@@ -62,3 +62,16 @@ DBBlockList DBLevelDB::getBlocksOnZ(int zPos)
 	return blocks;
 }
 
+DBBlock DBLevelDB::getBlocksOnPos(int64_t iPos)
+{
+	DBBlock block(0,(const unsigned char *)"");
+	std::string datastr;
+	leveldb::Status status;
+
+	status = m_db->Get(leveldb::ReadOptions(), i64tos(Pos), &datastr);
+	if(status.ok())
+		block = DBBlock( iPos, std::basic_string<unsigned char>( (const unsigned char*) datastr.c_str(), datastr.size() ) );
+
+	return block;
+}
+
