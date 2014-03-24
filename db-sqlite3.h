@@ -12,6 +12,9 @@ public:
 	~DBSQLite3();
 private:
 	sqlite3 *m_db;
+	sqlite3_stmt *m_getBlockPosStatement;
+	sqlite3_stmt *m_getBlocksOnZStatement;
+	sqlite3_stmt *m_getBlocksOnPosStatement;
 };
 
 #endif // _DB_SQLITE3_H
