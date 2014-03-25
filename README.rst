@@ -95,6 +95,11 @@ geometry:
 forcegeometry:
     Generate a map of the requested size, even if the world is smaller.
 
+sqlite-cacheworldrow:
+    When using sqlite, read an entire world row at one, instead of reading
+    one block at a time.
+    This may improve performance when a large percentage of the world is mapped.
+
 verbose:
     report some useful/ interesting information:
     - maximum coordinates of the world

@@ -107,6 +107,7 @@ TileGenerator::TileGenerator():
 	m_border(0),
 	m_backend("sqlite3"),
 	m_forceGeom(false),
+	m_sqliteCacheWorldRow(false),
 	m_image(0),
 	m_xMin(INT_MAX/16-1),
 	m_xMax(INT_MIN/16+1),
@@ -140,6 +141,11 @@ void TileGenerator::setBgColor(const std::string &bgColor)
 void TileGenerator::setForceGeom(bool forceGeom)
 {
 	m_forceGeom = forceGeom;
+}
+
+void TileGenerator::setSqliteCacheWorldRow(bool cacheWorldRow)
+{
+	m_sqliteCacheWorldRow = cacheWorldRow;
 }
 
 void TileGenerator::setScaleColor(const std::string &scaleColor)
@@ -319,8 +325,11 @@ void TileGenerator::parseColorsStream(std::istream &in)
 
 void TileGenerator::openDb(const std::string &input)
 {
-	if(m_backend == "sqlite3")
-		m_db = new DBSQLite3(input);
+	if(m_backend == "sqlite3") {
+		DBSQLite3 *db;
+		m_db = db = new DBSQLite3(input);
+		db->cacheWorldRow = m_sqliteCacheWorldRow;
+	}
 #if USE_LEVELDB
 	else if(m_backend == "leveldb")
 		m_db = new DBLevelDB(input);
@@ -469,28 +478,9 @@ void TileGenerator::createImage()
 	gdImageFilledRectangle(m_image, 0, 0, m_mapWidth + m_border - 1, m_mapHeight + m_border -1, rgb2int(m_bgColor.r, m_bgColor.g, m_bgColor.b));
 }
 
-std::map<int, TileGenerator::BlockList> TileGenerator::getBlocksOnZ(int zPos)
-{
-	DBBlockList in = m_db->getBlocksOnZ(zPos);
-	std::map<int, BlockList> out;
-	for(DBBlockList::const_iterator it = in.begin(); it != in.end(); ++it) {
-		Block b = Block(decodeBlockPos(it->first), it->second);
-		if(out.find(b.first.x) == out.end()) {
-			BlockList bl;
-			out[b.first.x] = bl;
-		}
-		out[b.first.x].push_back(b);
-	}
-	return out;
-}
-
 TileGenerator::Block TileGenerator::getBlockOnPos(BlockPos pos)
 {
-	int64_t iPos;
-	iPos =  pos.x;
-	iPos += static_cast<int64_t>(pos.y) << 12;
-	iPos += static_cast<int64_t>(pos.z) << 24;
-	DBBlock in = m_db->getBlockOnPos(iPos);
+	DBBlock in = m_db->getBlockOnPos(pos.x, pos.y, pos.z);
 	Block out(pos,(const unsigned char *)"");
 
 	if (!in.second.empty()) {
@@ -518,7 +508,6 @@ TileGenerator::Block TileGenerator::getBlockOnPos(BlockPos pos)
 
 void TileGenerator::renderMap()
 {
-	int blocks_selected = 0;
 	int blocks_rendered = 0;
 	BlockPos currentPos;
 	currentPos.x = INT_MIN;
@@ -539,7 +528,6 @@ void TileGenerator::renderMap()
 			continue;
 		}
 		Block block = getBlockOnPos(pos);
-		blocks_selected++;
 		if (!block.second.empty()) {
 			const unsigned char *data = block.second.c_str();
 			size_t length = block.second.length();
@@ -636,7 +624,12 @@ void TileGenerator::renderMap()
 	if(currentPos.z != INT_MIN && m_shading)
 		renderShading(currentPos.z);
 	if (verboseStatistics)
-		cout << "Statistics:  Blocks selected: " << blocks_selected << ";  blocks rendered: " << blocks_rendered << std::endl;
+		cout << "Statistics"
+		     << ":  blocks read: " << m_db->getBlocksReadCount()
+		     << ";  (" << m_db->getBlocksCachedCount() << " cached + "
+		               << m_db->getBlocksUnCachedCount() << " uncached)"
+		     << ";  blocks rendered: " << blocks_rendered
+		     << std::endl;
 }
 
 inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version)

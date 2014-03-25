@@ -98,6 +98,7 @@ public:
 	void setMinY(int y);
 	void setMaxY(int y);
 	void setForceGeom(bool forceGeom);
+	void setSqliteCacheWorldRow(bool cacheWorldRow);
 	void parseColorsFile(const std::string &fileName);
 	void setBackend(std::string backend);
 	void generate(const std::string &input, const std::string &output);
@@ -111,7 +112,6 @@ private:
 	void renderMap();
 	std::list<int> getZValueList() const;
 	Block getBlockOnPos(BlockPos pos);
-	std::map<int, BlockList> getBlocksOnZ(int zPos);
 	void renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version);
 	void renderShading(int zPos);
 	void renderScale();
@@ -138,6 +138,7 @@ private:
 	int m_border;
 	std::string m_backend;
 	bool m_forceGeom;
+	bool m_sqliteCacheWorldRow;
 
 	DB *m_db;
 	gdImagePtr m_image;

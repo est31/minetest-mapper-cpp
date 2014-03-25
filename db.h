@@ -14,8 +14,10 @@ typedef std::list<DBBlock> DBBlockList;
 class DB {
 public:
 	virtual std::vector<int64_t> getBlockPos()=0;
-	virtual DBBlockList getBlocksOnZ(int zPos)=0;
-	virtual DBBlock getBlockOnPos(int64_t iPos)=0;
+	virtual int getBlocksUnCachedCount(void)=0;
+	virtual int getBlocksCachedCount(void)=0;
+	virtual int getBlocksReadCount(void)=0;
+	virtual DBBlock getBlockOnPos(int x, int y, int z)=0;
 };
 
 #endif // _DB_H

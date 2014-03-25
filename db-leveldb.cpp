@@ -15,7 +15,11 @@ inline std::string i64tos(int64_t i) {
 	return o.str();
 }
 
-DBLevelDB::DBLevelDB(const std::string &mapdir) {
+DBLevelDB::DBLevelDB(const std::string &mapdir) :
+	m_blocksReadCount(0),
+	m_blocksCachedCount(0),
+	m_blocksUnCachedCount(0)
+{
 	leveldb::Options options;
 	options.create_if_missing = false;
 	leveldb::Status status = leveldb::DB::Open(options, mapdir + "map.db", &m_db);
@@ -25,6 +29,21 @@ DBLevelDB::DBLevelDB(const std::string &mapdir) {
 
 DBLevelDB::~DBLevelDB() {
 	delete m_db;
+}
+
+int DBLevelDB::getBlocksReadCount(void)
+{
+	return m_blocksReadCount;
+}
+
+int DBLevelDB::getBlocksCachedCount(void)
+{
+	return m_blocksCachedCount;
+}
+
+int DBLevelDB::getBlocksUnCachedCount(void)
+{
+	return m_blocksUnCachedCount;
 }
 
 std::vector<int64_t> DBLevelDB::getBlockPos() {
@@ -40,37 +59,23 @@ std::vector<int64_t> DBLevelDB::getBlockPos() {
 	return vec;
 }
 
-DBBlockList DBLevelDB::getBlocksOnZ(int zPos)
+DBBlock DBLevelDB::getBlockOnPos(int x, int y, int z)
 {
-	DBBlockList blocks;
-	std::string datastr;
-	leveldb::Status status;
-
-	int64_t psMin;
-	int64_t psMax;
-	psMin = (zPos * 16777216l) - 0x800000;
-	psMax = (zPos * 16777216l) + 0x7fffff;
-
-	for(int64_t i = psMin; i <= psMax; i++) { // FIXME: This is still very very inefficent (even with m_bpcache)
-		if(m_bpcache.find(i) == m_bpcache.end())
-			continue;
-		status = m_db->Get(leveldb::ReadOptions(), i64tos(i), &datastr);
-		if(status.ok())
-			blocks.push_back( DBBlock( i, std::basic_string<unsigned char>( (const unsigned char*) datastr.c_str(), datastr.size() ) ) );
-	}
-
-	return blocks;
-}
-
-DBBlock DBLevelDB::getBlocksOnPos(int64_t iPos)
-{
+	int64_t iPos;
 	DBBlock block(0,(const unsigned char *)"");
 	std::string datastr;
 	leveldb::Status status;
 
-	status = m_db->Get(leveldb::ReadOptions(), i64tos(Pos), &datastr);
-	if(status.ok())
+	iPos =  static_cast<int64_t>(x);
+	iPos += static_cast<int64_t>(y) << 12;
+	iPos += static_cast<int64_t>(z) << 24;
+
+	status = m_db->Get(leveldb::ReadOptions(), i64tos(iPos), &datastr);
+	if(status.ok()) {
 		block = DBBlock( iPos, std::basic_string<unsigned char>( (const unsigned char*) datastr.c_str(), datastr.size() ) );
+		m_blocksReadCount++;
+		m_blocksUnCachedCount++;
+	}
 
 	return block;
 }

@@ -18,6 +18,8 @@
 
 using namespace std;
 
+#define OPT_SQLITE_CACHEWORLDROW	0x81
+
 void usage()
 {
 	const char *usage_text = "minetestmapper [options]\n"
@@ -36,6 +38,7 @@ void usage()
 			"  --backend <sqlite3/leveldb>\n"
 			"  --geometry x:y+w+h\n"
 		        "  --forcegeometry\n"
+			"  --sqlite-cacheworldrow\n"
 			"  --verbose\n"
 			"Color format: '#000000'\n";
 	std::cout << usage_text;
@@ -61,6 +64,7 @@ int main(int argc, char *argv[])
 		{"min-y", required_argument, 0, 'a'},
 		{"max-y", required_argument, 0, 'c'},
 		{"backend", required_argument, 0, 'd'},
+		{"sqlite-cacheworldrow", no_argument, 0, OPT_SQLITE_CACHEWORLDROW},
 		{"verbose", no_argument, 0, 'v'},
 	};
 
@@ -118,6 +122,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'H':
 				generator.setShading(false);
+				break;
+			case OPT_SQLITE_CACHEWORLDROW:
+				generator.setSqliteCacheWorldRow(true);
 				break;
 			case 'a': {
 					istringstream iss;

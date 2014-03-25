@@ -8,11 +8,16 @@
 class DBLevelDB : public DB {
 public:
 	DBLevelDB(const std::string &mapdir);
+	virtual int getBlocksUnCachedCount(void);
+	virtual int getBlocksCachedCount(void);
+	virtual int getBlocksReadCount(void);
 	virtual std::vector<int64_t> getBlockPos();
-	virtual DBBlockList getBlocksOnZ(int zPos);
-	virtual DBBlock getBlockOnPos(int64_t iPos);
+	virtual DBBlock getBlockOnPos(int x, int y, int z);
 	~DBLevelDB();
 private:
+	int m_blocksReadCount;
+	int m_blocksCachedCount;
+	int m_blocksUnCachedCount;
 	leveldb::DB *m_db;
 	std::set<int64_t> m_bpcache;
 };
