@@ -13,10 +13,34 @@ Requirements
 Compilation
 -----------
 
+Plain:
+
 ::
 
     cmake .
     make
+
+With levelDB support:
+
+::
+
+    cmake -DENABLE_LEVELDB=true .
+    make
+
+Debug version:
+
+::
+
+    cmake -DCMAKE_BUILD_TYPE:STRING=Debug .
+    make
+
+Release version:
+
+::
+
+    cmake -DCMAKE_BUILD_TYPE:STRING=Release .
+    make
+
 
 Usage
 -----
@@ -67,6 +91,16 @@ backend:
 
 geometry:
     Limit area to specific geometry, `--geometry -800:-800+1600+1600`
+
+forcegeometry:
+    Generate a map of the requested size, even if the world is smaller.
+
+verbose:
+    report some useful/ interesting information:
+    - maximum coordinates of the world
+    - world coordinates included the map being generated
+    - number of blocks: in the world, and in the map area.
+    - database access statistics.
 
 Customization of colors.txt
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
