@@ -509,6 +509,7 @@ TileGenerator::Block TileGenerator::getBlockOnPos(BlockPos pos)
 void TileGenerator::renderMap()
 {
 	int blocks_rendered = 0;
+	int area_rendered = 0;
 	BlockPos currentPos;
 	currentPos.x = INT_MIN;
 	currentPos.y = 0;
@@ -517,6 +518,7 @@ void TileGenerator::renderMap()
 	for (std::list<BlockPos>::const_iterator position = m_positions.begin(); position != m_positions.end(); ++position) {
 		const BlockPos &pos = *position;
 		if (currentPos.x != pos.x || currentPos.z != pos.z) {
+			area_rendered++;
 			if (currentPos.z != pos.z && currentPos.z != INT_MIN && m_shading)
 				renderShading(currentPos.z);
 			for (int i = 0; i < 16; ++i) {
@@ -626,9 +628,12 @@ void TileGenerator::renderMap()
 	if (verboseStatistics)
 		cout << "Statistics"
 		     << ":  blocks read: " << m_db->getBlocksReadCount()
-		     << ";  (" << m_db->getBlocksCachedCount() << " cached + "
+		     << "  (" << m_db->getBlocksCachedCount() << " cached + "
 		               << m_db->getBlocksUnCachedCount() << " uncached)"
 		     << ";  blocks rendered: " << blocks_rendered
+		     << ";  area rendered: " << area_rendered
+		     << "/" << (m_xMax-m_xMin+1) * (m_zMax-m_zMin+1)
+		     << "  (" << (long long)area_rendered*16*16 << " nodes)"
 		     << std::endl;
 }
 
