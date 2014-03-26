@@ -219,8 +219,8 @@ void TileGenerator::setGeometry(int x, int y, int w, int h)
 		m_reqZMin = (y - 15) / 16;
 	}
 
-	int x2 = x + w;
-	int y2 = y + h;
+	int x2 = x + w - 1;
+	int y2 = y + h - 1;
 
 	if (x2 > 0) {
 		m_reqXMax = x2 / 16;
