@@ -19,7 +19,6 @@ private:
 	int m_blocksCachedCount;
 	int m_blocksUnCachedCount;
 	leveldb::DB *m_db;
-	std::set<int64_t> m_bpcache;
 };
 
 #endif // _DB_LEVELDB_H

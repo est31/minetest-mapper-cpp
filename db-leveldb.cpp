@@ -48,14 +48,11 @@ int DBLevelDB::getBlocksUnCachedCount(void)
 
 std::vector<int64_t> DBLevelDB::getBlockPos() {
 	std::vector<int64_t> vec;
-	std::set<int64_t> s;
 	leveldb::Iterator* it = m_db->NewIterator(leveldb::ReadOptions());
 	for (it->SeekToFirst(); it->Valid(); it->Next()) {
 		vec.push_back(stoi64(it->key().ToString()));
-		s.insert(stoi64(it->key().ToString()));
 	}
 	delete it;
-	m_bpcache = s;
 	return vec;
 }
 
