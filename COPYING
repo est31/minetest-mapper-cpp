@@ -1,27 +1,34 @@
-Copyright (c) 2013-2014, Miroslav Bendík and various contributors (see AUTHORS)
-All rights reserved.
+Copyright (c) 2012-2014, Miroslav Bendík and various contributors (see AUTHORS)
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met: 
+This software may be used and copied subject to one or more licenses.
 
-1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer. 
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution. 
+IANAL, but it seems to me that:
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+The original code, (c) Miroslav Bendík contained a file 'LICENSE', stating that
+the code was LGPLv2.1 licensed. The original code therefore has this license.
 
-The views and conclusions contained in the software and documentation are those
-of the authors and should not be interpreted as representing official policies, 
-either expressed or implied, of the FreeBSD Project.
+On 23 feb 2014, Miroslav added the file 'COPYING', containing the BSD 2-clause
+license, to his source tree, without removing the LGPLv2.1+ license file.
+Presumably, this means that all his code should be considered dual-licensed.
 
+ShadowNinja's contributions predate this, and are based on an earlier version
+of Miroslav's work anyway, so his contributions should necessarily be licensed
+LGPLv2.1+ as well.
+There is no indication that his contributions are licensed under any other
+license (in particular: not under the BSD 2-clause license).
+
+Sfan5 made a few contributions on top of ShadowNinja's version, and on 5 mar 2014,
+added the file 'COPYING' with the BSD 2-clause license as well.
+Presumably, all his contributions can therefore be considered dual-licensed:
+LGPLv2.1+ and BSD 2-clause.
+
+Rogier's contributions are licensed and (re)usable subject to any of the following
+licenses:
+- FSF GPL v2 or later
+- FSF LGPL v2.1 or later
+- BSD 2-clause
+- BSD 3-clause
+
+See the following files for more details about the licenses:
+- LICENSE.LGPLv2.1:	the LGPLv2.1 license statement
+- LICENSE.BSD-2clause:	the BSD 2-clause license text
