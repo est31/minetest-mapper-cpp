@@ -20,6 +20,9 @@
 #include "PixelAttributes.h"
 #include "db.h"
 
+#define MINETEST_MAPBLOCK_MIN	(-2048)
+#define MINETEST_MAPBLOCK_MAX	2047
+
 struct Color {
 	Color(): r(255), g(255), b(255) {};
 	Color(uint8_t r, uint8_t g, uint8_t b): r(r), g(g), b(b) {};

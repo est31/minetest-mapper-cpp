@@ -115,12 +115,12 @@ TileGenerator::TileGenerator():
 	m_zMax(INT_MIN/16+1),
 	m_yMin(INT_MAX/16-1),
 	m_yMax(INT_MIN/16+1),
-	m_reqXMin(INT_MIN/16+1),
-	m_reqXMax(INT_MAX/16-1),
-	m_reqYMin(INT_MIN/16+1),
-	m_reqYMax(INT_MAX/16-1),
-	m_reqZMin(INT_MIN/16+1),
-	m_reqZMax(INT_MAX/16-1),
+	m_reqXMin(MINETEST_MAPBLOCK_MIN),
+	m_reqXMax(MINETEST_MAPBLOCK_MAX),
+	m_reqYMin(MINETEST_MAPBLOCK_MIN),
+	m_reqYMax(MINETEST_MAPBLOCK_MAX),
+	m_reqZMin(MINETEST_MAPBLOCK_MIN),
+	m_reqZMax(MINETEST_MAPBLOCK_MAX),
 	m_reqYMinNode(0),
 	m_reqYMaxNode(15)
 {
