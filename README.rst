@@ -102,10 +102,10 @@ sqlite-cacheworldrow:
 
 verbose:
     report some useful/ interesting information:
-    - maximum coordinates of the world
-    - world coordinates included the map being generated
-    - number of blocks: in the world, and in the map area.
-    - database access statistics.
+    * maximum coordinates of the world
+    * world coordinates included the map being generated
+    * number of blocks: in the world, and in the map area.
+    * database access statistics.
 
 Customization of colors.txt
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
