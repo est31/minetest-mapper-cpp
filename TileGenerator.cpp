@@ -21,7 +21,6 @@
 #include "PlayerAttributes.h"
 #include "TileGenerator.h"
 #include "ZlibDecompressor.h"
-#include "colors.h"
 #include "db-sqlite3.h"
 #if USE_LEVELDB
 #include "db-leveldb.h"
@@ -132,9 +131,6 @@ TileGenerator::TileGenerator():
 	m_tileMapXOffset(0),
 	m_tileMapYOffset(0)
 {
-	string colors_txt_data(reinterpret_cast<char *>(colors_txt), colors_txt_len);
-	istringstream colors_stream(colors_txt_data);
-	parseColorsStream(colors_stream);
 }
 
 TileGenerator::~TileGenerator()

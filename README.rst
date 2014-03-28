@@ -8,7 +8,6 @@ Requirements
 
 * libgd
 * sqlite3
-* xxd binary (You can get xxd from your distribution packages or use '' wget -O xxd.c http://www.opensource.apple.com/source/vim/vim-43/vim/src/xxd/xxd.c?txt && gcc xxd.c -o xxd '')
 
 Compilation
 -----------
@@ -136,8 +135,3 @@ verbose:
     * number of blocks: in the world, and in the map area.
     * database access statistics.
 
-Customization of colors.txt
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Default `colors.txt` is included in binary. Color definitions can be redefined
-using external `colors.txt` file.
