@@ -112,4 +112,5 @@ target_link_libraries(
 	${LEVELDB_LIBRARY}
 	${LIBGD_LIBRARY}
 	${ZLIB_LIBRARY}
+	stdc++ # clang seems to need this
 )
