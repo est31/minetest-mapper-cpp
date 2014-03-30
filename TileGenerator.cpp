@@ -366,9 +366,9 @@ void TileGenerator::loadBlocks()
 	std::vector<int64_t> vec = m_db->getBlockPos();
 	world_blocks = 0;
 	map_blocks = 0;
-	for(unsigned int i = 0; i < vec.size(); i++) {
+	for(std::vector<int64_t>::iterator it = vec.begin(); it != vec.end(); ++it) {
 		world_blocks ++;
-		BlockPos pos = decodeBlockPos(vec[i]);
+		BlockPos pos = decodeBlockPos(*it);
 		if (pos.x < mapXMin) {
 			mapXMin = pos.x;
 		}
