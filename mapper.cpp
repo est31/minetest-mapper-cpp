@@ -33,6 +33,7 @@ void usage()
 			"  --drawscale\n"
 			"  --drawplayers\n"
 			"  --draworigin\n"
+			"  --drawalpha\n"
 			"  --noshading\n"
 			"  --min-y <y>\n"
 			"  --max-y <y>\n"
@@ -61,6 +62,7 @@ int main(int argc, char *argv[])
 		{"draworigin", no_argument, 0, 'R'},
 		{"drawplayers", no_argument, 0, 'P'},
 		{"drawscale", no_argument, 0, 'S'},
+		{"drawalpha", no_argument, 0, 'e'},
 		{"noshading", no_argument, 0, 'H'},
 		{"geometry", required_argument, 0, 'g'},
 		{"forcegeometry", no_argument, 0, 'G'},
@@ -128,6 +130,9 @@ int main(int argc, char *argv[])
 			case 'v':
 				generator.verboseCoordinates = true;
 				generator.verboseStatistics = true;
+				break;
+			case 'e':
+				generator.setDrawAlpha(true);
 				break;
 			case 'H':
 				generator.setShading(false);

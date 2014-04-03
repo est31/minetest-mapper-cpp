@@ -53,9 +53,14 @@ static inline uint16_t readU16(const unsigned char *data)
 	return data[0] << 8 | data[1];
 }
 
-static inline int rgb2int(uint8_t r, uint8_t g, uint8_t b)
+static inline int rgb2int(uint8_t r, uint8_t g, uint8_t b, uint8_t a=0xFF)
 {
-	return (r << 16) + (g << 8) + b;
+	return (a << 24) + (r << 16) + (g << 8) + b;
+}
+
+static inline int color2int(Color c)
+{
+    return rgb2int(c.r, c.g, c.b, c.a);
 }
 
 static inline int readBlockContent(const unsigned char *mapData, int version, int datapos)
@@ -92,6 +97,19 @@ static inline int colorSafeBounds(int color)
 	}
 }
 
+static inline Color mixColors(Color a, Color b)
+{
+    Color result;
+    double a1 = a.a / 255.0;
+    double a2 = b.a / 255.0;
+
+    result.r = (int) (a1 * a.r + a2 * (1 - a1) * b.r);
+    result.g = (int) (a1 * a.g + a2 * (1 - a1) * b.g);
+    result.b = (int) (a1 * a.b + a2 * (1 - a1) * b.b);
+    result.a = (int) (255 * (a1 + a2 * (1 - a1)));
+    return result;
+}
+
 TileGenerator::TileGenerator():
 	verboseCoordinates(false),
 	verboseStatistics(false),
@@ -103,6 +121,7 @@ TileGenerator::TileGenerator():
 	m_drawOrigin(false),
 	m_drawPlayers(false),
 	m_drawScale(false),
+	m_drawAlpha(false),
 	m_shading(true),
 	m_border(0),
 	m_backend("sqlite3"),
@@ -225,6 +244,11 @@ void TileGenerator::setDrawScale(bool drawScale)
 	}
 }
 
+void TileGenerator::setDrawAlpha(bool drawAlpha)
+{
+    m_drawAlpha = drawAlpha;
+}
+
 void TileGenerator::setShading(bool shading)
 {
 	m_shading = shading;
@@ -327,7 +351,7 @@ void TileGenerator::parseColorsStream(std::istream &in)
 {
 	while (in.good()) {
 		string name;
-		Color color;
+		ColorEntry color;
 		in >> name;
 		if (name[0] == '#') {
 			in.ignore(65536, '\n');
@@ -336,14 +360,20 @@ void TileGenerator::parseColorsStream(std::istream &in)
 		while (name == "\n" && in.good()) {
 			in >> name;
 		}
-		int r, g, b;
+		int r, g, b, a, t;
 		in >> r;
 		in >> g;
 		in >> b;
+		if(in.peek() != '\n') {
+		    in >> a;
+		    if(in.peek() != '\n')
+                in >> t;
+            else
+                t = 0;
+		} else
+		    a = 0xFF;
 		if (in.good()) {
-			color.r = r;
-			color.g = g;
-			color.b = b;
+			color = ColorEntry(r,g,b,a,t);
 			m_colors[name] = color;
 		}
 	}
@@ -566,18 +596,18 @@ void TileGenerator::createImage()
 
 	m_image = gdImageCreateTrueColor(pictWidth + m_border, pictHeight + m_border);
 	// Background
-	gdImageFilledRectangle(m_image, 0, 0, pictWidth + m_border - 1, pictHeight + m_border -1, rgb2int(m_bgColor.r, m_bgColor.g, m_bgColor.b));
+	gdImageFilledRectangle(m_image, 0, 0, pictWidth + m_border - 1, pictHeight + m_border -1, color2int(m_bgColor));
 
 	// Draw tile borders
 	if (m_tileWidth && m_tileBorderSize) {
-		int borderColor = rgb2int(m_tileBorderColor.r, m_tileBorderColor.g, m_tileBorderColor.b);
+		int borderColor = color2int(m_tileBorderColor);
 		for (int i = 0; i < tileBorderXLimit - tileBorderXStart; i++) {
 			int xPos = m_tileMapXOffset + i * (m_tileWidth + m_tileBorderSize);
 			gdImageFilledRectangle(m_image, xPos + m_border, m_border, xPos + (m_tileBorderSize-1) + m_border, pictHeight + m_border - 1, borderColor);
 		}
 	}
 	if (m_tileHeight && m_tileBorderSize) {
-		int borderColor = rgb2int(m_tileBorderColor.r, m_tileBorderColor.g, m_tileBorderColor.b);
+		int borderColor = color2int(m_tileBorderColor);
 		for (int i = 0; i < tileBorderZLimit - tileBorderZStart; i++) {
 			int yPos = m_tileMapYOffset + i * (m_tileHeight + m_tileBorderSize);
 			gdImageFilledRectangle(m_image, m_border, yPos + m_border, pictWidth + m_border - 1, yPos + (m_tileBorderSize-1) + m_border, borderColor);
@@ -751,6 +781,8 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 	const unsigned char *mapData = mapBlock.c_str();
 	int minY = (pos.y < m_reqYMin) ? 16 : (pos.y > m_reqYMin) ?  0 : m_reqYMinNode;
 	int maxY = (pos.y > m_reqYMax) ? -1 : (pos.y < m_reqYMax) ? 15 : m_reqYMaxNode;
+	Color col;
+	uint8_t th;
 	for (int z = 0; z < 16; ++z) {
 		int imageY = getImageY(zBegin + 15 - z);
 		for (int x = 0; x < 16; ++x) {
@@ -758,6 +790,10 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 				continue;
 			}
 			int imageX = getImageX(xBegin + x);
+			if(m_drawAlpha) {
+			    col = Color(0,0,0,0);
+			    th = 0;
+			}
 			for (int y = maxY; y >= minY; --y) {
 				int position = x + (y << 4) + (z << 8);
 				int content = readBlockContent(mapData, version, position);
@@ -765,20 +801,33 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 					continue;
 				}
 				std::map<int, std::string>::iterator blockName = m_nameMap.find(content);
-				if (blockName != m_nameMap.end()) {
-					const string &name = blockName->second;
-					ColorMap::const_iterator color = m_colors.find(name);
-					if (color != m_colors.end()) {
-						const Color &c = color->second;
-						m_image->tpixels[imageY][imageX] = rgb2int(c.r, c.g, c.b);
-						m_readedPixels[z] |= (1 << x);
-						m_blockPixelAttributes.attribute(15 - z, xBegin + x).height = pos.y * 16 + y;
-					} else {
-						m_unknownNodes.insert(name);
-						continue;
-					}
-					break;
+				if (blockName == m_nameMap.end())
+				    continue;
+				const string &name = blockName->second;
+				ColorMap::const_iterator color = m_colors.find(name);
+				if (color != m_colors.end()) {
+					const Color c = color->second.to_color();
+					if (m_drawAlpha) {
+					    if (col.a == 0)
+					        col = c;
+					    else
+					        col = mixColors(col, c);
+					    if(col.a == 0xFF) {
+					        m_image->tpixels[imageY][imageX] = color2int(col);
+					        m_blockPixelAttributes.attribute(15 - z, xBegin + x).thicken = th;
+					    } else {
+					        th = (th + color->second.t) / 2.0;
+					        continue;
+					    }
+					} else
+					    m_image->tpixels[imageY][imageX] = color2int(c);
+					m_readedPixels[z] |= (1 << x);
+					m_blockPixelAttributes.attribute(15 - z, xBegin + x).height = pos.y * 16 + y;
+				} else {
+					m_unknownNodes.insert(name);
+					continue;
 				}
+				break;
 			}
 		}
 	}
@@ -804,13 +853,16 @@ inline void TileGenerator::renderShading(int zPos)
 			if (d > 36) {
 				d = 36;
 			}
+			if (m_drawAlpha)
+			    d = d * ((0xFF - m_blockPixelAttributes.attribute(z, x).thicken) / 255.0);
 			int sourceColor = m_image->tpixels[imageY][getImageX(x)] & 0xffffff;
-			int r = (sourceColor & 0xff0000) >> 16;
-			int g = (sourceColor & 0x00ff00) >> 8;
-			int b = (sourceColor & 0x0000ff);
+			uint8_t r = (sourceColor & 0xff0000) >> 16;
+			uint8_t g = (sourceColor & 0x00ff00) >> 8;
+			uint8_t b = (sourceColor & 0x0000ff);
 			r = colorSafeBounds(r + d);
 			g = colorSafeBounds(g + d);
 			b = colorSafeBounds(b + d);
+
 			m_image->tpixels[imageY][getImageX(x)] = rgb2int(r, g, b);
 		}
 	}
@@ -819,7 +871,7 @@ inline void TileGenerator::renderShading(int zPos)
 
 void TileGenerator::renderScale()
 {
-	int color = rgb2int(m_scaleColor.r, m_scaleColor.g, m_scaleColor.b);
+	int color = color2int(m_scaleColor);
 	gdImageString(m_image, gdFontGetMediumBold(), 24, 0, reinterpret_cast<unsigned char *>(const_cast<char *>("X")), color);
 	gdImageString(m_image, gdFontGetMediumBold(), 2, 24, reinterpret_cast<unsigned char *>(const_cast<char *>("Z")), color);
 
@@ -850,12 +902,12 @@ void TileGenerator::renderOrigin()
 {
 	int imageX = getImageX(-m_xMin * 16);
 	int imageY = getImageY(m_mapHeight - 1 - m_zMin * -16);
-	gdImageArc(m_image, imageX, imageY, 12, 12, 0, 360, rgb2int(m_originColor.r, m_originColor.g, m_originColor.b));
+	gdImageArc(m_image, imageX, imageY, 12, 12, 0, 360, color2int(m_originColor));
 }
 
 void TileGenerator::renderPlayers(const std::string &inputPath)
 {
-	int color = rgb2int(m_playerColor.r, m_playerColor.g, m_playerColor.b);
+	int color = color2int(m_playerColor);
 
 	PlayerAttributes players(inputPath);
 	for (PlayerAttributes::Players::iterator player = players.begin(); player != players.end(); ++player) {
