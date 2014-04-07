@@ -741,8 +741,8 @@ void TileGenerator::renderScale()
 
 void TileGenerator::renderOrigin()
 {
-	int imageX = -m_xMin * 16 + m_border;
-	int imageY = m_mapHeight - m_zMin * -16 + m_border;
+	int imageX = getImageX(-m_xMin * 16);
+	int imageY = getImageY(m_mapHeight - 1 - m_zMin * -16);
 	gdImageArc(m_image, imageX, imageY, 12, 12, 0, 360, rgb2int(m_originColor.r, m_originColor.g, m_originColor.b));
 }
 
@@ -752,8 +752,8 @@ void TileGenerator::renderPlayers(const std::string &inputPath)
 
 	PlayerAttributes players(inputPath);
 	for (PlayerAttributes::Players::iterator player = players.begin(); player != players.end(); ++player) {
-		int imageX = player->x / 10 - m_xMin * 16 + m_border;
-		int imageY = m_mapHeight - (player->z / 10 - m_zMin * 16) + m_border;
+		int imageX = getImageX(player->x / 10 - m_xMin * 16);
+		int imageY = getImageY(m_mapHeight - 1 - (player->z / 10 - m_zMin * 16));
 
 		gdImageArc(m_image, imageX, imageY, 5, 5, 0, 360, color);
 		gdImageString(m_image, gdFontGetMediumBold(), imageX + 2, imageY + 2, reinterpret_cast<unsigned char *>(const_cast<char *>(player->name.c_str())), color);
