@@ -11,6 +11,7 @@
 #define TILEGENERATOR_H_JJNUCARH
 
 #include <gd.h>
+#include <climits>
 #include <iosfwd>
 #include <list>
 #include <map>
@@ -22,6 +23,9 @@
 
 #define MINETEST_MAPBLOCK_MIN	(-2048)
 #define MINETEST_MAPBLOCK_MAX	2047
+
+#define TILECENTER_IS_WORLDCENTER	INT_MAX
+#define TILECENTER_IS_MAPCENTER		INT_MIN
 
 struct Color {
 	Color(): r(255), g(255), b(255) {};
@@ -102,6 +106,10 @@ public:
 	void setMaxY(int y);
 	void setForceGeom(bool forceGeom);
 	void setSqliteCacheWorldRow(bool cacheWorldRow);
+	void setTileBorderColor(const std::string &tileBorderColor);
+	void setTileBorderSize(int size);
+	void setTileSize(int width, int heigth);
+	void setTileOrigin(int x, int y);
 	void parseColorsFile(const std::string &fileName);
 	void setBackend(std::string backend);
 	void generate(const std::string &input, const std::string &output);
@@ -134,6 +142,7 @@ private:
 	Color m_scaleColor;
 	Color m_originColor;
 	Color m_playerColor;
+	Color m_tileBorderColor;
 	bool m_drawOrigin;
 	bool m_drawPlayers;
 	bool m_drawScale;
@@ -162,6 +171,13 @@ private:
 	int m_reqYMaxNode;	// Node offset within a map block
 	int m_mapWidth;
 	int m_mapHeight;
+	int m_tileXOrigin;
+	int m_tileZOrigin;
+	int m_tileWidth;
+	int m_tileHeight;
+	int m_tileBorderSize;
+	int m_tileMapXOffset;
+	int m_tileMapYOffset;
 	std::list<BlockPos> m_positions;
 	std::map<int, std::string> m_nameMap;
 	ColorMap m_colors;

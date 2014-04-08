@@ -29,6 +29,7 @@ void usage()
 			"  --scalecolor <color>\n"
 			"  --playercolor <color>\n"
 			"  --origincolor <color>\n"
+			"  --tilebordercolor <color>\n"
 			"  --drawscale\n"
 			"  --drawplayers\n"
 			"  --draworigin\n"
@@ -39,6 +40,8 @@ void usage()
 			"  --geometry x:y+w+h\n"
 		        "  --forcegeometry\n"
 			"  --sqlite-cacheworldrow\n"
+			"  --tiles <tilesize>[+<border>]\n"
+			"  --tileorigin x:y|center-world|center-map\n"
 			"  --verbose\n"
 			"Color format: '#000000'\n";
 	std::cout << usage_text;
@@ -65,6 +68,9 @@ int main(int argc, char *argv[])
 		{"max-y", required_argument, 0, 'c'},
 		{"backend", required_argument, 0, 'd'},
 		{"sqlite-cacheworldrow", no_argument, 0, OPT_SQLITE_CACHEWORLDROW},
+		{"tiles", required_argument, 0, 't'},
+		{"tileorigin", required_argument, 0, 'T'},
+		{"tilebordercolor", required_argument, 0, 'B'},
 		{"verbose", no_argument, 0, 'v'},
 	};
 
@@ -107,6 +113,9 @@ int main(int argc, char *argv[])
 			case 'p':
 				generator.setPlayerColor(optarg);
 				break;
+			case 'B':
+				generator.setTileBorderColor(optarg);
+				break;
 			case 'R':
 				generator.setDrawOrigin(true);
 				break;
@@ -140,6 +149,48 @@ int main(int argc, char *argv[])
 					int maxy;
 					iss >> maxy;
 					generator.setMaxY(maxy);
+				}
+				break;
+			case 't': {
+					istringstream tilesize;
+					tilesize.str(optarg);
+					int size, border;
+					char c;
+					tilesize >> size;
+					if (tilesize.fail() || size<1) {
+						usage();
+						exit(1);
+					}
+					generator.setTileSize(size, size);
+					tilesize >> c >> border;
+					if (!tilesize.fail()) {
+						if (c != '+' || border < 1) {
+							usage();
+							exit(1);
+						}
+						generator.setTileBorderSize(border);
+					}
+				}
+				break;
+			case 'T': {
+					istringstream origin;
+					origin.str(optarg);
+					int x, y;
+					char c;
+					origin >> x >> c >> y;
+					if (origin.fail() || c != ':') {
+						if (string("center-world") == optarg)
+							generator.setTileOrigin(TILECENTER_IS_WORLDCENTER, TILECENTER_IS_WORLDCENTER);
+						else if (string("center-map") == optarg)
+							generator.setTileOrigin(TILECENTER_IS_MAPCENTER, TILECENTER_IS_MAPCENTER);
+						else {
+							usage();
+							exit(1);
+						}
+					}
+					else {
+						generator.setTileOrigin(x, y);
+					}
 				}
 				break;
 			case 'g': {

@@ -100,6 +100,7 @@ TileGenerator::TileGenerator():
 	m_scaleColor(0, 0, 0),
 	m_originColor(255, 0, 0),
 	m_playerColor(255, 0, 0),
+	m_tileBorderColor(0, 0, 0),
 	m_drawOrigin(false),
 	m_drawPlayers(false),
 	m_drawScale(false),
@@ -122,7 +123,14 @@ TileGenerator::TileGenerator():
 	m_reqZMin(MINETEST_MAPBLOCK_MIN),
 	m_reqZMax(MINETEST_MAPBLOCK_MAX),
 	m_reqYMinNode(0),
-	m_reqYMaxNode(15)
+	m_reqYMaxNode(15),
+	m_tileXOrigin(TILECENTER_IS_WORLDCENTER),
+	m_tileZOrigin(TILECENTER_IS_WORLDCENTER),
+	m_tileWidth(0),
+	m_tileHeight(0),
+	m_tileBorderSize(1),
+	m_tileMapXOffset(0),
+	m_tileMapYOffset(0)
 {
 	string colors_txt_data(reinterpret_cast<char *>(colors_txt), colors_txt_len);
 	istringstream colors_stream(colors_txt_data);
@@ -161,6 +169,28 @@ void TileGenerator::setOriginColor(const std::string &originColor)
 void TileGenerator::setPlayerColor(const std::string &playerColor)
 {
 	m_playerColor = parseColor(playerColor);
+}
+
+void TileGenerator::setTileBorderColor(const std::string &tileBorderColor)
+{
+	m_tileBorderColor = parseColor(tileBorderColor);
+}
+
+void TileGenerator::setTileBorderSize(int size)
+{
+	m_tileBorderSize = size;
+}
+
+void TileGenerator::setTileSize(int width, int heigth)
+{
+	m_tileWidth = width;
+	m_tileHeight = heigth;
+}
+
+void TileGenerator::setTileOrigin(int x, int y)
+{
+	m_tileXOrigin = x;
+	m_tileZOrigin = y;
 }
 
 Color TileGenerator::parseColor(const std::string &color)
@@ -472,10 +502,91 @@ void TileGenerator::createImage()
 {
 	m_mapWidth = (m_xMax - m_xMin + 1) * 16;
 	m_mapHeight = (m_zMax - m_zMin + 1) * 16;
-	m_image = gdImageCreateTrueColor(m_mapWidth + m_border, m_mapHeight + m_border);
 	m_blockPixelAttributes.setWidth(m_mapWidth);
+
+	// Set special values for origin (which depend on other paramters)
+	if (m_tileWidth) {
+		if (m_tileXOrigin == TILECENTER_IS_WORLDCENTER)
+			m_tileXOrigin = -m_tileWidth/2;
+		else if (m_tileXOrigin == TILECENTER_IS_MAPCENTER)
+			m_tileXOrigin = ((m_xMax+1)*2-(m_xMax+1-m_xMin))*8 - m_tileWidth/2;
+	}
+	if (m_tileHeight) {
+		if (m_tileZOrigin == TILECENTER_IS_WORLDCENTER)
+			m_tileZOrigin = -m_tileHeight/2;
+		else if (m_tileZOrigin == TILECENTER_IS_MAPCENTER)
+			m_tileZOrigin = ((m_zMax+1)*2-(m_zMax+1-m_zMin))*8 - m_tileHeight/2;
+	}
+
+	int pictWidth = m_mapWidth;
+	int pictHeight = m_mapHeight;
+	int tileBorderXStart = 0;
+	int tileBorderXLimit = 0;
+	int tileBorderZStart = 0;
+	int tileBorderZLimit = 0;
+	if (m_tileWidth && m_tileBorderSize) {
+		int xStart = m_xMin * 16 - m_tileXOrigin;
+		int xLimit = (m_xMax+1) * 16 - m_tileXOrigin;
+		int shift;
+		// shift values, so that xStart = 0..m_tileWidth-1
+		// (effect of m_tileXOrigin is identical to (m_tileXOrigin + m_tileWidth)
+		//  so any multiple of m_tileWidth can be safely added)
+		if (xStart<0)
+			shift = - (xStart + 1) / m_tileWidth + 1;
+		else
+			shift = - xStart / m_tileWidth;
+		xStart += shift * m_tileWidth;
+		xLimit += shift * m_tileWidth;
+
+		// 0 -> 0
+		// 1..m_tileWidth -> 1
+		// (m_tileWidth+1)..(2*m_tileWidth) -> 2
+		// etc.
+		tileBorderXStart = (xStart + m_tileWidth - 1) / m_tileWidth;
+		tileBorderXLimit = (xLimit + m_tileWidth - 1) / m_tileWidth;
+		m_tileMapXOffset = (m_tileWidth - xStart) % m_tileWidth;
+		pictWidth += (tileBorderXLimit - tileBorderXStart) * m_tileBorderSize;
+	}
+	if (m_tileHeight && m_tileBorderSize) {
+		int zStart = m_zMin * 16 - m_tileZOrigin;
+		int zLimit = (m_zMax+1) * 16 - m_tileZOrigin;
+		int shift;
+		// shift values so that zStart = 0..m_tileHeight-1
+		if (zStart<0)
+			shift = - (zStart + 1) / m_tileHeight + 1;
+		else
+			shift = - zStart / m_tileHeight;
+		zStart += shift * m_tileHeight;
+		zLimit += shift * m_tileHeight;
+
+		// 0..(m_tileWidth-1) -> 1
+		// m_tileWidth..(2*m_tileWidth-1) -> 2
+		// etc.
+		tileBorderZStart = zStart / m_tileHeight + 1;
+		tileBorderZLimit = zLimit / m_tileHeight + 1;
+		m_tileMapYOffset = zLimit - ((tileBorderZLimit-tileBorderZStart) * m_tileHeight);
+		pictHeight += (tileBorderZLimit - tileBorderZStart) * m_tileBorderSize;
+	}
+
+	m_image = gdImageCreateTrueColor(pictWidth + m_border, pictHeight + m_border);
 	// Background
-	gdImageFilledRectangle(m_image, 0, 0, m_mapWidth + m_border - 1, m_mapHeight + m_border -1, rgb2int(m_bgColor.r, m_bgColor.g, m_bgColor.b));
+	gdImageFilledRectangle(m_image, 0, 0, pictWidth + m_border - 1, pictHeight + m_border -1, rgb2int(m_bgColor.r, m_bgColor.g, m_bgColor.b));
+
+	// Draw tile borders
+	if (m_tileWidth && m_tileBorderSize) {
+		int borderColor = rgb2int(m_tileBorderColor.r, m_tileBorderColor.g, m_tileBorderColor.b);
+		for (int i = 0; i < tileBorderXLimit - tileBorderXStart; i++) {
+			int xPos = m_tileMapXOffset + i * (m_tileWidth + m_tileBorderSize);
+			gdImageFilledRectangle(m_image, xPos + m_border, m_border, xPos + (m_tileBorderSize-1) + m_border, pictHeight + m_border - 1, borderColor);
+		}
+	}
+	if (m_tileHeight && m_tileBorderSize) {
+		int borderColor = rgb2int(m_tileBorderColor.r, m_tileBorderColor.g, m_tileBorderColor.b);
+		for (int i = 0; i < tileBorderZLimit - tileBorderZStart; i++) {
+			int yPos = m_tileMapYOffset + i * (m_tileHeight + m_tileBorderSize);
+			gdImageFilledRectangle(m_image, m_border, yPos + m_border, pictWidth + m_border - 1, yPos + (m_tileBorderSize-1) + m_border, borderColor);
+		}
+	}
 }
 
 TileGenerator::Block TileGenerator::getBlockOnPos(BlockPos pos)
@@ -723,7 +834,7 @@ void TileGenerator::renderScale()
 		buf << i * 16;
 		scaleText = buf.str();
 
-		int xPos = m_xMin * -16 + i * 16 + m_border;
+		int xPos = getImageX(m_xMin * -16 + i * 16);
 		gdImageString(m_image, gdFontGetMediumBold(), xPos + 2, 0, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
 		gdImageLine(m_image, xPos, 0, xPos, m_border - 1, color);
 	}
@@ -733,7 +844,7 @@ void TileGenerator::renderScale()
 		buf << i * 16;
 		scaleText = buf.str();
 
-		int yPos = m_mapHeight - 1 - (i * 16 - m_zMin * 16) + m_border;
+		int yPos = getImageY(m_mapHeight - 1 - (i * 16 - m_zMin * 16));
 		gdImageString(m_image, gdFontGetMediumBold(), 2, yPos, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
 		gdImageLine(m_image, 0, yPos, m_border - 1, yPos, color);
 	}
@@ -798,11 +909,19 @@ void TileGenerator::printUnknown()
 
 inline int TileGenerator::getImageX(int val) const
 {
-	return val + m_border;
+	if (m_tileWidth && m_tileBorderSize)
+		val += ((val - m_tileMapXOffset + m_tileWidth) / m_tileWidth) * m_tileBorderSize + m_border;
+	else
+		val += m_border;
+	return val;
 }
 
 inline int TileGenerator::getImageY(int val) const
 {
-	return val + m_border;
+	if (m_tileHeight && m_tileBorderSize)
+		val += ((val - m_tileMapYOffset + m_tileHeight) / m_tileHeight) * m_tileBorderSize + m_border;
+	else
+		val += m_border;
+	return val;
 }
 
