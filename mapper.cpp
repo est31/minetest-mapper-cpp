@@ -19,6 +19,7 @@
 using namespace std;
 
 #define OPT_SQLITE_CACHEWORLDROW	0x81
+#define OPT_PROGRESS_INDICATOR		0x82
 
 void usage()
 {
@@ -44,6 +45,7 @@ void usage()
 			"  --tiles <tilesize>[+<border>]\n"
 			"  --tileorigin x:y|center-world|center-map\n"
 			"  --verbose\n"
+			"  --progress\n"
 			"Color format: '#000000'\n";
 	std::cout << usage_text;
 }
@@ -74,6 +76,7 @@ int main(int argc, char *argv[])
 		{"tileorigin", required_argument, 0, 'T'},
 		{"tilebordercolor", required_argument, 0, 'B'},
 		{"verbose", no_argument, 0, 'v'},
+		{"progress", no_argument, 0, OPT_PROGRESS_INDICATOR},
 	};
 
 	string input;
@@ -139,6 +142,9 @@ int main(int argc, char *argv[])
 				break;
 			case OPT_SQLITE_CACHEWORLDROW:
 				generator.setSqliteCacheWorldRow(true);
+				break;
+			case OPT_PROGRESS_INDICATOR:
+				generator.enableProgressIndicator();
 				break;
 			case 'a': {
 					istringstream iss;

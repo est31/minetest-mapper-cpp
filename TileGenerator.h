@@ -126,6 +126,7 @@ public:
 	void setTileBorderSize(int size);
 	void setTileSize(int width, int heigth);
 	void setTileOrigin(int x, int y);
+	void enableProgressIndicator(void);
 	void parseColorsFile(const std::string &fileName);
 	void setBackend(std::string backend);
 	void generate(const std::string &input, const std::string &output);
@@ -152,6 +153,7 @@ private:
 public:
 	bool verboseCoordinates;
 	bool verboseStatistics;
+	bool progressIndicator;
 
 private:
 	Color m_bgColor;

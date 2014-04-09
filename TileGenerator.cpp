@@ -13,6 +13,7 @@
 #include <fstream>
 #include <gdfontmb.h>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <cerrno>
@@ -113,6 +114,7 @@ static inline Color mixColors(Color a, Color b)
 TileGenerator::TileGenerator():
 	verboseCoordinates(false),
 	verboseStatistics(false),
+	progressIndicator(false),
 	m_bgColor(255, 255, 255),
 	m_scaleColor(0, 0, 0),
 	m_originColor(255, 0, 0),
@@ -252,6 +254,11 @@ void TileGenerator::setDrawAlpha(bool drawAlpha)
 void TileGenerator::setShading(bool shading)
 {
 	m_shading = shading;
+}
+
+void TileGenerator::enableProgressIndicator(void)
+{
+	progressIndicator = true;
 }
 
 void TileGenerator::setGeometry(int x, int y, int w, int h)
@@ -665,6 +672,8 @@ void TileGenerator::renderMap()
 			area_rendered++;
 			if (currentPos.z != pos.z && currentPos.z != INT_MIN && m_shading)
 				renderShading(currentPos.z);
+			if (progressIndicator && currentPos.z != pos.z)
+			    cout << "Processing Z-coordinate: " << std::setw(5) << pos.z*16 << "\r" << std::flush;
 			for (int i = 0; i < 16; ++i) {
 				m_readedPixels[i] = 0;
 			}
@@ -779,6 +788,8 @@ void TileGenerator::renderMap()
 		     << "/" << (m_xMax-m_xMin+1) * (m_zMax-m_zMin+1)
 		     << "  (" << (long long)area_rendered*16*16 << " nodes)"
 		     << std::endl;
+	else if (progressIndicator)
+		cout << std::setw(40) << "" << "\r";
 }
 
 inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version)
