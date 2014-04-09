@@ -367,6 +367,7 @@ void TileGenerator::parseColorsStream(std::istream &in, const std::string &filen
 		iline >> b;
 		if (!iline.good() && !iline.eof()) {
 			std::cerr << filename << ":" << linenr << ": bad line in colors file (" << line << ")" << std::endl;
+			continue;
 		}
 		a = 0xff;
 		iline >> a;
