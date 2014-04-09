@@ -110,7 +110,8 @@ public:
 	void setBgColor(const std::string &bgColor);
 	void setScaleColor(const std::string &scaleColor);
 	void setOriginColor(const std::string &originColor);
-	void setPlayerColor(const std::string &playerColor); Color parseColor(const std::string &color);
+	void setPlayerColor(const std::string &playerColor);
+	Color parseColor(const std::string &color);
 	void setDrawOrigin(bool drawOrigin);
 	void setDrawPlayers(bool drawPlayers);
 	void setDrawScale(bool drawScale);
@@ -130,7 +131,7 @@ public:
 	void generate(const std::string &input, const std::string &output);
 
 private:
-	void parseColorsStream(std::istream &in);
+	void parseColorsStream(std::istream &in, const std::string &filename);
 	void openDb(const std::string &input);
 	void loadBlocks();
 	BlockPos decodeBlockPos(int64_t blockId) const;

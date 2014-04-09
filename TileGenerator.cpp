@@ -315,7 +315,7 @@ void TileGenerator::parseColorsFile(const std::string &fileName)
 	if (!in.is_open()) {
 		return;
 	}
-	parseColorsStream(in);
+	parseColorsStream(in, fileName.c_str());
 }
 
 void TileGenerator::setBackend(std::string backend)
@@ -347,35 +347,36 @@ void TileGenerator::generate(const std::string &input, const std::string &output
 	printUnknown();
 }
 
-void TileGenerator::parseColorsStream(std::istream &in)
+void TileGenerator::parseColorsStream(std::istream &in, const std::string &filename)
 {
-	while (in.good()) {
+	string line;
+	int linenr = 0;
+	for (std::getline(in,line); in.good(); std::getline(in,line)) {
+		linenr++;
+		istringstream iline;
+		iline.str(line);
+		iline >> std::skipws;
 		string name;
 		ColorEntry color;
-		in >> name;
-		if (name[0] == '#') {
-			in.ignore(65536, '\n');
-			in >> name;
-		}
-		while (name == "\n" && in.good()) {
-			in >> name;
-		}
+		iline >> name;
+		if (name.length() == 0 || name[0] == '#')
+			continue;
 		int r, g, b, a, t;
-		in >> r;
-		in >> g;
-		in >> b;
-		if(in.peek() != '\n') {
-		    in >> a;
-		    if(in.peek() != '\n')
-                in >> t;
-            else
-                t = 0;
-		} else
-		    a = 0xFF;
-		if (in.good()) {
-			color = ColorEntry(r,g,b,a,t);
-			m_colors[name] = color;
+		iline >> r;
+		iline >> g;
+		iline >> b;
+		if (!iline.good() && !iline.eof()) {
+			std::cerr << filename << ":" << linenr << ": bad line in colors file (" << line << ")" << std::endl;
 		}
+		a = 0xff;
+		iline >> a;
+		t = 0;
+		iline >> t;
+		color = ColorEntry(r,g,b,a,t);
+		m_colors[name] = color;
+	}
+	if (!in.eof()) {
+		std::cerr << filename << ": error reading colors file after line " << linenr << std::endl;
 	}
 }
 
