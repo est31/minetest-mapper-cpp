@@ -597,6 +597,11 @@ void TileGenerator::createImage()
 	}
 
 	m_image = gdImageCreateTrueColor(pictWidth + m_border, pictHeight + m_border);
+	if (!m_image) {
+		ostringstream oss;
+		oss << "Failed to allocate " << pictWidth + m_border << "x" << pictHeight + m_border << " image";
+		throw std::runtime_error(oss.str());
+	}
 	// Background
 	gdImageFilledRectangle(m_image, 0, 0, pictWidth + m_border - 1, pictHeight + m_border -1, color2int(m_bgColor));
 
