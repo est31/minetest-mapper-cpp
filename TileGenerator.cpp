@@ -88,19 +88,6 @@ static inline int colorSafeBounds(int color)
 	}
 }
 
-static inline Color mixColors(Color a, Color b)
-{
-    Color result;
-    double a1 = a.a / 255.0;
-    double a2 = b.a / 255.0;
-
-    result.r = (int) (a1 * a.r + a2 * (1 - a1) * b.r);
-    result.g = (int) (a1 * a.g + a2 * (1 - a1) * b.g);
-    result.b = (int) (a1 * a.b + a2 * (1 - a1) * b.b);
-    result.a = (int) (255 * (a1 + a2 * (1 - a1)));
-    return result;
-}
-
 TileGenerator::TileGenerator():
 	verboseCoordinates(false),
 	verboseStatistics(false),
@@ -142,6 +129,7 @@ TileGenerator::TileGenerator():
 	m_tileMapXOffset(0),
 	m_tileMapYOffset(0)
 {
+	resetPixelBlockCache();
 }
 
 TileGenerator::~TileGenerator()
@@ -524,6 +512,29 @@ inline BlockPos TileGenerator::decodeBlockPos(int64_t blockId) const
 	return pos;
 }
 
+void TileGenerator::resetPixelBlockCache(void) {
+	for (int x=0; x<16; x++) {
+		for (int z=0; z<16; z++) {
+			m_pixelBlockCache[z][x].reset();
+		}
+	}
+}
+
+void TileGenerator::pushPixelBlockCache(int xPos, int zPos) {
+	int xBegin = (xPos - m_xMin) * 16;
+	int zBegin = (m_zMax - zPos) * 16;
+	for (int x=0; x<16; x++) {
+		for (int z=0; z<16; z++) {
+			PixelCacheEntry &pixel = m_pixelBlockCache[z][x];
+			if (pixel.n && !std::isnan(pixel.h)) {
+				m_image->tpixels[getImageY(zBegin + (15 - z))][getImageX(xBegin + x)] = color2libgd(pixel.to_color());
+				m_blockPixelAttributes.attribute(15 - z, xBegin + x).thicken = pixel.thicken();
+				m_blockPixelAttributes.attribute(15 - z, xBegin + x).height = pixel.height();
+			}
+		}
+	}
+}
+
 void TileGenerator::createImage()
 {
 	m_mapWidth = (m_xMax - m_xMin + 1) * 16;
@@ -676,8 +687,12 @@ void TileGenerator::renderMap()
 		const BlockPos &pos = *position;
 		if (currentPos.x != pos.x || currentPos.z != pos.z) {
 			area_rendered++;
-			if (currentPos.z != pos.z && currentPos.z != INT_MIN && m_shading)
-				renderShading(currentPos.z);
+			if (currentPos.z != INT_MIN) {
+				pushPixelBlockCache(currentPos.x, currentPos.z);
+				resetPixelBlockCache();
+				if (currentPos.z != pos.z && m_shading)
+					renderShading(currentPos.z);
+			}
 			if (progressIndicator && currentPos.z != pos.z)
 			    cout << "Processing Z-coordinate: " << std::setw(5) << pos.z*16 << "\r" << std::flush;
 			for (int i = 0; i < 16; ++i) {
@@ -782,8 +797,12 @@ void TileGenerator::renderMap()
 			}
 		}
 	}
-	if(currentPos.z != INT_MIN && m_shading)
-		renderShading(currentPos.z);
+	if (currentPos.z != INT_MIN) {
+		pushPixelBlockCache(currentPos.x, currentPos.z);
+		resetPixelBlockCache();
+		if(m_shading)
+			renderShading(currentPos.z);
+	}
 	if (verboseStatistics)
 		cout << "Statistics"
 		     << ":  blocks read: " << m_db->getBlocksReadCount()
@@ -805,8 +824,6 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 	const unsigned char *mapData = mapBlock.c_str();
 	int minY = (pos.y < m_reqYMin) ? 16 : (pos.y > m_reqYMin) ?  0 : m_reqYMinNode;
 	int maxY = (pos.y > m_reqYMax) ? -1 : (pos.y < m_reqYMax) ? 15 : m_reqYMaxNode;
-	Color col;
-	uint8_t th;
 	for (int z = 0; z < 16; ++z) {
 		int imageY = getImageY(zBegin + 15 - z);
 		for (int x = 0; x < 16; ++x) {
@@ -814,10 +831,6 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 				continue;
 			}
 			int imageX = getImageX(xBegin + x);
-			if(m_drawAlpha) {
-				col = Color(0,0,0,0);
-				th = 0;
-			}
 			for (int y = maxY; y >= minY; --y) {
 				int position = x + (y << 4) + (z << 8);
 				int content = readBlockContent(mapData, version, position);
@@ -832,26 +845,25 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 				if (color != m_colors.end()) {
 					const Color c = color->second.to_color();
 					if (m_drawAlpha) {
-						if (col.a == 0)
-							col = c;
-						else
-							col = mixColors(col, c);
-						if(col.a == 0xFF) {
-							m_image->tpixels[imageY][imageX] = color2libgd(col);
-							m_blockPixelAttributes.attribute(15 - z, xBegin + x).thicken = th;
-						} else {
-							th = (th + color->second.t) / 2.0;
-							continue;
+						PixelCacheEntry pixel = PixelCacheEntry(color->second, pos.y * 16 + y);
+						m_pixelBlockCache[z][x].mixUnder(pixel);
+						if(pixel.alpha() == 0xff) {
+							m_readedPixels[z] |= (1 << x);
+							break;
 						}
-					} else
+						else if(0 && m_pixelBlockCache[z][x].alpha() == 0xff) {
+							m_readedPixels[z] |= (1 << x);
+							break;
+						}
+					} else {
 						m_image->tpixels[imageY][imageX] = color2libgd(c);
-					m_readedPixels[z] |= (1 << x);
-					m_blockPixelAttributes.attribute(15 - z, xBegin + x).height = pos.y * 16 + y;
+						m_readedPixels[z] |= (1 << x);
+						m_blockPixelAttributes.attribute(15 - z, xBegin + x).height = pos.y * 16 + y;
+						break;
+					}
 				} else {
 					m_unknownNodes.insert(name);
-					continue;
 				}
-				break;
 			}
 		}
 	}

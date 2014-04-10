@@ -20,6 +20,7 @@
 #include <string>
 #include "PixelAttributes.h"
 #include "Color.h"
+#include "PixelCacheEntry.h"
 #include "db.h"
 
 #define MINETEST_MAPBLOCK_MIN	(-2048)
@@ -119,6 +120,8 @@ private:
 	void renderMap();
 	std::list<int> getZValueList() const;
 	Block getBlockOnPos(BlockPos pos);
+	void resetPixelBlockCache(void);
+	void pushPixelBlockCache(int xPos, int zPos);
 	void renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version);
 	void renderShading(int zPos);
 	void renderScale();
@@ -153,6 +156,7 @@ private:
 	DB *m_db;
 	gdImagePtr m_image;
 	PixelAttributes m_blockPixelAttributes;
+	PixelCacheEntry m_pixelBlockCache[16][16];
 	int m_xMin;
 	int m_xMax;
 	int m_zMin;
