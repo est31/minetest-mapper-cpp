@@ -59,9 +59,20 @@ static inline int rgb2int(uint8_t r, uint8_t g, uint8_t b, uint8_t a=0xFF)
 	return (a << 24) + (r << 16) + (g << 8) + b;
 }
 
+//libgd treats 255 as transparent, and 0 as opaque ...
+static inline int rgb2libgd(uint8_t r, uint8_t g, uint8_t b, uint8_t a=0xFF)
+{
+	return rgb2int(r, g, b, 0xff-a);
+}
+
 static inline int color2int(Color c)
 {
     return rgb2int(c.r, c.g, c.b, c.a);
+}
+
+static inline int color2libgd(Color c)
+{
+    return rgb2libgd(c.r, c.g, c.b, c.a);
 }
 
 static inline int readBlockContent(const unsigned char *mapData, int version, int datapos)
@@ -220,6 +231,7 @@ Color TileGenerator::parseColor(const std::string &color)
 		throw std::runtime_error("Color does not begin with #");
 	}
 	long col = strtol(color.c_str() + 1, NULL, 16);
+	parsed.a = 255;
 	parsed.b = col % 256;
 	col = col / 256;
 	parsed.g = col % 256;
@@ -625,18 +637,18 @@ void TileGenerator::createImage()
 		throw std::runtime_error(oss.str());
 	}
 	// Background
-	gdImageFilledRectangle(m_image, 0, 0, pictWidth + m_border - 1, pictHeight + m_border -1, color2int(m_bgColor));
+	gdImageFilledRectangle(m_image, 0, 0, pictWidth + m_border - 1, pictHeight + m_border -1, color2libgd(m_bgColor));
 
 	// Draw tile borders
 	if (m_tileWidth && m_tileBorderSize) {
-		int borderColor = color2int(m_tileBorderColor);
+		int borderColor = color2libgd(m_tileBorderColor);
 		for (int i = 0; i < tileBorderXLimit - tileBorderXStart; i++) {
 			int xPos = m_tileMapXOffset + i * (m_tileWidth + m_tileBorderSize);
 			gdImageFilledRectangle(m_image, xPos + m_border, m_border, xPos + (m_tileBorderSize-1) + m_border, pictHeight + m_border - 1, borderColor);
 		}
 	}
 	if (m_tileHeight && m_tileBorderSize) {
-		int borderColor = color2int(m_tileBorderColor);
+		int borderColor = color2libgd(m_tileBorderColor);
 		for (int i = 0; i < tileBorderZLimit - tileBorderZStart; i++) {
 			int yPos = m_tileMapYOffset + i * (m_tileHeight + m_tileBorderSize);
 			gdImageFilledRectangle(m_image, m_border, yPos + m_border, pictWidth + m_border - 1, yPos + (m_tileBorderSize-1) + m_border, borderColor);
@@ -846,14 +858,14 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 						else
 							col = mixColors(col, c);
 						if(col.a == 0xFF) {
-							m_image->tpixels[imageY][imageX] = color2int(col);
+							m_image->tpixels[imageY][imageX] = color2libgd(col);
 							m_blockPixelAttributes.attribute(15 - z, xBegin + x).thicken = th;
 						} else {
 							th = (th + color->second.t) / 2.0;
 							continue;
 						}
 					} else
-						m_image->tpixels[imageY][imageX] = color2int(c);
+						m_image->tpixels[imageY][imageX] = color2libgd(c);
 					m_readedPixels[z] |= (1 << x);
 					m_blockPixelAttributes.attribute(15 - z, xBegin + x).height = pos.y * 16 + y;
 				} else {
@@ -896,7 +908,7 @@ inline void TileGenerator::renderShading(int zPos)
 			g = colorSafeBounds(g + d);
 			b = colorSafeBounds(b + d);
 
-			m_image->tpixels[imageY][getImageX(x)] = rgb2int(r, g, b);
+			m_image->tpixels[imageY][getImageX(x)] = rgb2libgd(r, g, b);
 		}
 	}
 	m_blockPixelAttributes.scroll();
@@ -904,7 +916,7 @@ inline void TileGenerator::renderShading(int zPos)
 
 void TileGenerator::renderScale()
 {
-	int color = color2int(m_scaleColor);
+	int color = color2libgd(m_scaleColor);
 	gdImageString(m_image, gdFontGetMediumBold(), 24, 0, reinterpret_cast<unsigned char *>(const_cast<char *>("X")), color);
 	gdImageString(m_image, gdFontGetMediumBold(), 2, 24, reinterpret_cast<unsigned char *>(const_cast<char *>("Z")), color);
 
@@ -935,12 +947,12 @@ void TileGenerator::renderOrigin()
 {
 	int imageX = getImageX(-m_xMin * 16);
 	int imageY = getImageY(m_mapHeight - 1 - m_zMin * -16);
-	gdImageArc(m_image, imageX, imageY, 12, 12, 0, 360, color2int(m_originColor));
+	gdImageArc(m_image, imageX, imageY, 12, 12, 0, 360, color2libgd(m_originColor));
 }
 
 void TileGenerator::renderPlayers(const std::string &inputPath)
 {
-	int color = color2int(m_playerColor);
+	int color = color2libgd(m_playerColor);
 
 	PlayerAttributes players(inputPath);
 	for (PlayerAttributes::Players::iterator player = players.begin(); player != players.end(); ++player) {
