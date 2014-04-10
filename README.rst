@@ -102,7 +102,7 @@ sqlite-cacheworldrow:
     one block at a time.
     This may improve performance when a large percentage of the world is mapped.
 
---tiles <tilesize>[+<border>]
+tiles <tilesize>[+<border>]
     Divide the map in square tiles of the requested size. A border of the
     requested width (or width 1, of not specfied) is drawn between the tiles.
     In order to preserve all map pixels (and to prevent overwriting them with
@@ -119,7 +119,7 @@ sqlite-cacheworldrow:
       logically *between* pixels, so they have no actual coordinates.
 
 
---tileorigin x:y
+tileorigin x:y
     Arrange the tiles so that one tile has its bottom-left (i.e. south-west)
     corner at map coordinates x,y.
     By default, tiles are arranged so that one tile has map coordinate 0,0 at
@@ -128,7 +128,7 @@ sqlite-cacheworldrow:
     `--tileorigin center-map`
     `--tileorigin center-world`
 
---tilebordercolor
+tilebordercolor
     Color of border between tiles, `--tilebordercolor #000000`
 
 verbose:
