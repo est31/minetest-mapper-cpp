@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <string>
 #include "PixelAttributes.h"
+#include "Color.h"
 #include "db.h"
 
 #define MINETEST_MAPBLOCK_MIN	(-2048)
@@ -26,28 +27,6 @@
 
 #define TILECENTER_IS_WORLDCENTER	INT_MAX
 #define TILECENTER_IS_MAPCENTER		INT_MIN
-
-struct Color {
-	Color(): r(0xFF), g(0xFF), b(0xFF), a(0) {};
-	Color(uint8_t r, uint8_t g, uint8_t b): r(r), g(g), b(b), a(0xFF) {};
-	Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a): r(r), g(g), b(b), a(a) {};
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
-	uint8_t a;
-};
-
-struct ColorEntry {
-	ColorEntry(): r(0), g(0), b(0), a(0), t(0) {};
-	ColorEntry(uint8_t r, uint8_t g, uint8_t b, uint8_t a, uint8_t t): r(r), g(g), b(b), a(a), t(t) {};
-	inline Color to_color() const { return Color(r, g, b, a); }
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
-	uint8_t a;
-	uint8_t t;
-};
-
 
 struct BlockPos {
 	int x;

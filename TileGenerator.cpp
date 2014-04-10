@@ -54,27 +54,6 @@ static inline uint16_t readU16(const unsigned char *data)
 	return data[0] << 8 | data[1];
 }
 
-static inline int rgb2int(uint8_t r, uint8_t g, uint8_t b, uint8_t a=0xFF)
-{
-	return (a << 24) + (r << 16) + (g << 8) + b;
-}
-
-//libgd treats 255 as transparent, and 0 as opaque ...
-static inline int rgb2libgd(uint8_t r, uint8_t g, uint8_t b, uint8_t a=0xFF)
-{
-	return rgb2int(r, g, b, 0xff-a);
-}
-
-static inline int color2int(Color c)
-{
-    return rgb2int(c.r, c.g, c.b, c.a);
-}
-
-static inline int color2libgd(Color c)
-{
-    return rgb2libgd(c.r, c.g, c.b, c.a);
-}
-
 static inline int readBlockContent(const unsigned char *mapData, int version, int datapos)
 {
 	if (version >= 24) {
