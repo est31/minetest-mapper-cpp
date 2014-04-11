@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 					int size, border;
 					char c;
 					tilesize >> size;
-					if (tilesize.fail() || size<1) {
+					if (tilesize.fail() || size<0) {
 						usage();
 						exit(1);
 					}
