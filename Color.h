@@ -6,6 +6,10 @@ struct Color {
 	Color(): r(0xFF), g(0xFF), b(0xFF), a(0) {};
 	Color(uint8_t r, uint8_t g, uint8_t b): r(r), g(g), b(b), a(0xFF) {};
 	Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a): r(r), g(g), b(b), a(a) {};
+	Color &operator=(const Color &c);
+	unsigned to_uint() const { return (unsigned(a) << 24) + (unsigned(r) << 16) + (unsigned(g) << 8) + unsigned(b); }
+	//libgd treats 255 as transparent, and 0 as opaque ...
+	int to_libgd() const { return ((0xff - int(a)) << 24) + (int(r) << 16) + (int(g) << 8) + int(b); }
 	uint8_t r;
 	uint8_t g;
 	uint8_t b;
@@ -23,25 +27,13 @@ struct ColorEntry {
 	uint8_t t;
 };
 
-inline int rgb2int(uint8_t r, uint8_t g, uint8_t b, uint8_t a=0xFF)
+inline Color &Color::operator=(const Color &c)
 {
-	return (a << 24) + (r << 16) + (g << 8) + b;
-}
-
-//libgd treats 255 as transparent, and 0 as opaque ...
-inline int rgb2libgd(uint8_t r, uint8_t g, uint8_t b, uint8_t a=0xFF)
-{
-	return rgb2int(r, g, b, 0xff-a);
-}
-
-inline int color2int(Color c)
-{
-    return rgb2int(c.r, c.g, c.b, c.a);
-}
-
-inline int color2libgd(Color c)
-{
-    return rgb2libgd(c.r, c.g, c.b, c.a);
+	r = c.r;
+	g = c.g;
+	b = c.b;
+	a = c.a;
+	return *this;
 }
 
 #endif // COLOR_H

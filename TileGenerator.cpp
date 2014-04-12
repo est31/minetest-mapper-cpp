@@ -75,19 +75,6 @@ static inline int readBlockContent(const unsigned char *mapData, int version, in
 	}
 }
 
-static inline int colorSafeBounds(int color)
-{
-	if (color > 255) {
-		return 255;
-	}
-	else if (color < 0) {
-		return 0;
-	}
-	else {
-		return color;
-	}
-}
-
 TileGenerator::TileGenerator():
 	verboseCoordinates(false),
 	verboseStatistics(false),
@@ -129,7 +116,6 @@ TileGenerator::TileGenerator():
 	m_tileMapXOffset(0),
 	m_tileMapYOffset(0)
 {
-	resetPixelBlockCache();
 }
 
 TileGenerator::~TileGenerator()
@@ -512,27 +498,16 @@ inline BlockPos TileGenerator::decodeBlockPos(int64_t blockId) const
 	return pos;
 }
 
-void TileGenerator::resetPixelBlockCache(void) {
-	for (int x=0; x<16; x++) {
-		for (int z=0; z<16; z++) {
-			m_pixelBlockCache[z][x].reset();
-		}
-	}
-}
-
-void TileGenerator::pushPixelBlockCache(int xPos, int zPos) {
-	int xBegin = (xPos - m_xMin) * 16;
+void TileGenerator::pushPixelRows(int zPos) {
 	int zBegin = (m_zMax - zPos) * 16;
-	for (int x=0; x<16; x++) {
+	for (int x=0; x<m_mapWidth; x++) {
 		for (int z=0; z<16; z++) {
-			PixelCacheEntry &pixel = m_pixelBlockCache[z][x];
-			if (pixel.n && !std::isnan(pixel.h)) {
-				m_image->tpixels[getImageY(zBegin + (15 - z))][getImageX(xBegin + x)] = color2libgd(pixel.to_color());
-				m_blockPixelAttributes.attribute(15 - z, xBegin + x).thicken = pixel.thicken();
-				m_blockPixelAttributes.attribute(15 - z, xBegin + x).height = pixel.height();
-			}
+			PixelAttribute &pixel = m_blockPixelAttributes.attribute(z,x);
+			if (pixel.valid_height())
+				m_image->tpixels[getImageY(zBegin + z)][getImageX(x)] = pixel.color().to_libgd();
 		}
 	}
+	m_blockPixelAttributes.scroll();
 }
 
 void TileGenerator::createImage()
@@ -627,18 +602,18 @@ void TileGenerator::createImage()
 		throw std::runtime_error(oss.str());
 	}
 	// Background
-	gdImageFilledRectangle(m_image, 0, 0, pictWidth + m_border - 1, pictHeight + m_border -1, color2libgd(m_bgColor));
+	gdImageFilledRectangle(m_image, 0, 0, pictWidth + m_border - 1, pictHeight + m_border -1, m_bgColor.to_libgd());
 
 	// Draw tile borders
 	if (m_tileWidth && m_tileBorderSize) {
-		int borderColor = color2libgd(m_tileBorderColor);
+		int borderColor = m_tileBorderColor.to_libgd();
 		for (int i = 0; i < tileBorderXLimit - tileBorderXStart; i++) {
 			int xPos = m_tileMapXOffset + i * (m_tileWidth + m_tileBorderSize);
 			gdImageFilledRectangle(m_image, xPos + m_border, m_border, xPos + (m_tileBorderSize-1) + m_border, pictHeight + m_border - 1, borderColor);
 		}
 	}
 	if (m_tileHeight && m_tileBorderSize) {
-		int borderColor = color2libgd(m_tileBorderColor);
+		int borderColor = m_tileBorderColor.to_libgd();
 		for (int i = 0; i < tileBorderZLimit - tileBorderZStart; i++) {
 			int yPos = m_tileMapYOffset + i * (m_tileHeight + m_tileBorderSize);
 			gdImageFilledRectangle(m_image, m_border, yPos + m_border, pictWidth + m_border - 1, yPos + (m_tileBorderSize-1) + m_border, borderColor);
@@ -687,11 +662,10 @@ void TileGenerator::renderMap()
 		const BlockPos &pos = *position;
 		if (currentPos.x != pos.x || currentPos.z != pos.z) {
 			area_rendered++;
-			if (currentPos.z != INT_MIN) {
-				pushPixelBlockCache(currentPos.x, currentPos.z);
-				resetPixelBlockCache();
-				if (currentPos.z != pos.z && m_shading)
-					renderShading(currentPos.z);
+			if (currentPos.z != INT_MIN && currentPos.z != pos.z) {
+				if (m_shading)
+					m_blockPixelAttributes.renderShading(m_drawAlpha);
+				pushPixelRows(currentPos.z);
 			}
 			if (progressIndicator && currentPos.z != pos.z)
 			    cout << "Processing Z-coordinate: " << std::setw(5) << pos.z*16 << "\r" << std::flush;
@@ -798,10 +772,9 @@ void TileGenerator::renderMap()
 		}
 	}
 	if (currentPos.z != INT_MIN) {
-		pushPixelBlockCache(currentPos.x, currentPos.z);
-		resetPixelBlockCache();
-		if(m_shading)
-			renderShading(currentPos.z);
+		if (m_shading)
+			m_blockPixelAttributes.renderShading(m_drawAlpha);
+		pushPixelRows(currentPos.z);
 	}
 	if (verboseStatistics)
 		cout << "Statistics"
@@ -820,17 +793,14 @@ void TileGenerator::renderMap()
 inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version)
 {
 	int xBegin = (pos.x - m_xMin) * 16;
-	int zBegin = (m_zMax - pos.z) * 16;
 	const unsigned char *mapData = mapBlock.c_str();
 	int minY = (pos.y < m_reqYMin) ? 16 : (pos.y > m_reqYMin) ?  0 : m_reqYMinNode;
 	int maxY = (pos.y > m_reqYMax) ? -1 : (pos.y < m_reqYMax) ? 15 : m_reqYMaxNode;
 	for (int z = 0; z < 16; ++z) {
-		int imageY = getImageY(zBegin + 15 - z);
 		for (int x = 0; x < 16; ++x) {
 			if (m_readedPixels[z] & (1 << x)) {
 				continue;
 			}
-			int imageX = getImageX(xBegin + x);
 			for (int y = maxY; y >= minY; --y) {
 				int position = x + (y << 4) + (z << 8);
 				int content = readBlockContent(mapData, version, position);
@@ -843,22 +813,16 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 				const string &name = blockName->second;
 				ColorMap::const_iterator color = m_colors.find(name);
 				if (color != m_colors.end()) {
-					const Color c = color->second.to_color();
+					PixelAttribute pixel = PixelAttribute(color->second, pos.y * 16 + y);
 					if (m_drawAlpha) {
-						PixelCacheEntry pixel = PixelCacheEntry(color->second, pos.y * 16 + y);
-						m_pixelBlockCache[z][x].mixUnder(pixel);
+						m_blockPixelAttributes.attribute(15 - z,xBegin + x).mixUnder(pixel);
 						if(pixel.alpha() == 0xff) {
 							m_readedPixels[z] |= (1 << x);
 							break;
 						}
-						else if(0 && m_pixelBlockCache[z][x].alpha() == 0xff) {
-							m_readedPixels[z] |= (1 << x);
-							break;
-						}
 					} else {
-						m_image->tpixels[imageY][imageX] = color2libgd(c);
+						m_blockPixelAttributes.attribute(15 - z, xBegin + x) = pixel;
 						m_readedPixels[z] |= (1 << x);
-						m_blockPixelAttributes.attribute(15 - z, xBegin + x).height = pos.y * 16 + y;
 						break;
 					}
 				} else {
@@ -869,45 +833,9 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 	}
 }
 
-inline void TileGenerator::renderShading(int zPos)
-{
-	int zBegin = (m_zMax - zPos) * 16;
-	for (int z = 0; z < 16; ++z) {
-		int imageY = zBegin + z;
-		if (imageY >= m_mapHeight) {
-			continue;
-		}
-		imageY = getImageY(imageY);
-		for (int x = 0; x < m_mapWidth; ++x) {
-			if (!m_blockPixelAttributes.attribute(z, x).valid_height() || !m_blockPixelAttributes.attribute(z, x - 1).valid_height() || !m_blockPixelAttributes.attribute(z - 1, x).valid_height()) {
-				continue;
-			}
-			int y = m_blockPixelAttributes.attribute(z, x).height;
-			int y1 = m_blockPixelAttributes.attribute(z, x - 1).height;
-			int y2 = m_blockPixelAttributes.attribute(z - 1, x).height;
-			int d = ((y - y1) + (y - y2)) * 12;
-			if (d > 36) {
-				d = 36;
-			}
-			if (m_drawAlpha)
-				d = d * ((0xFF - m_blockPixelAttributes.attribute(z, x).thicken) / 255.0);
-			int sourceColor = m_image->tpixels[imageY][getImageX(x)] & 0xffffff;
-			uint8_t r = (sourceColor & 0xff0000) >> 16;
-			uint8_t g = (sourceColor & 0x00ff00) >> 8;
-			uint8_t b = (sourceColor & 0x0000ff);
-			r = colorSafeBounds(r + d);
-			g = colorSafeBounds(g + d);
-			b = colorSafeBounds(b + d);
-
-			m_image->tpixels[imageY][getImageX(x)] = rgb2libgd(r, g, b);
-		}
-	}
-	m_blockPixelAttributes.scroll();
-}
-
 void TileGenerator::renderScale()
 {
-	int color = color2libgd(m_scaleColor);
+	int color = m_scaleColor.to_libgd();
 	gdImageString(m_image, gdFontGetMediumBold(), 24, 0, reinterpret_cast<unsigned char *>(const_cast<char *>("X")), color);
 	gdImageString(m_image, gdFontGetMediumBold(), 2, 24, reinterpret_cast<unsigned char *>(const_cast<char *>("Z")), color);
 
@@ -938,12 +866,12 @@ void TileGenerator::renderOrigin()
 {
 	int imageX = getImageX(-m_xMin * 16);
 	int imageY = getImageY(m_mapHeight - 1 - m_zMin * -16);
-	gdImageArc(m_image, imageX, imageY, 12, 12, 0, 360, color2libgd(m_originColor));
+	gdImageArc(m_image, imageX, imageY, 12, 12, 0, 360, m_originColor.to_libgd());
 }
 
 void TileGenerator::renderPlayers(const std::string &inputPath)
 {
-	int color = color2libgd(m_playerColor);
+	int color = m_playerColor.to_libgd();
 
 	PlayerAttributes players(inputPath);
 	for (PlayerAttributes::Players::iterator player = players.begin(); player != players.end(); ++player) {
