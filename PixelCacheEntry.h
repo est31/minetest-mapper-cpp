@@ -53,12 +53,12 @@ inline PixelCacheEntry::PixelCacheEntry(const ColorEntry &entry, double height) 
 {
 }
 
-inline Color PixelCacheEntry::to_color(void)
+inline Color PixelCacheEntry::to_color(void) const
 {
 	return Color(int(r*255+0.5),int(g*255+0.5),int(b*255+0.5),int(a*255+0.5));
 }
 
-inline ColorEntry PixelCacheEntry::to_colorEntry(void)
+inline ColorEntry PixelCacheEntry::to_colorEntry(void) const
 {
 	return ColorEntry(int(r*255+0.5),int(g*255+0.5),int(b*255+0.5),int(a*255+0.5),int(t*255+0.5));
 }
