@@ -285,6 +285,7 @@ void TileGenerator::parseColorsFile(const std::string &fileName)
 	ifstream in;
 	in.open(fileName.c_str(), ifstream::in);
 	if (!in.is_open()) {
+		throw std::runtime_error(std::string("Failed to open colors file '") + fileName + "'");
 		return;
 	}
 	parseColorsStream(in, fileName.c_str());

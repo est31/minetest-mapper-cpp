@@ -83,149 +83,159 @@ int main(int argc, char *argv[])
 	string output;
 
 	TileGenerator generator;
-	generator.parseColorsFile("colors.txt");
-	int option_index = 0;
-	int c = 0;
-	while (1) {
-		c = getopt_long(argc, argv, "hi:o:", long_options, &option_index);
-		if (c == -1) {
-			if (input.empty() || output.empty()) {
-				usage();
-				return 0;
+	try {
+		generator.parseColorsFile("colors.txt");
+	} catch(std::runtime_error e) {
+		std::cout<<"Exception: "<<e.what()<<std::endl;
+		return 1;
+	}
+	try {
+		int option_index = 0;
+		int c = 0;
+		while (1) {
+			c = getopt_long(argc, argv, "hi:o:", long_options, &option_index);
+			if (c == -1) {
+				if (input.empty() || output.empty()) {
+					usage();
+					return 0;
+				}
+				break;
 			}
-			break;
-		}
-		switch (c) {
-			case 'h':
-				usage();
-				return 0;
-				break;
-			case 'i':
-				input = optarg;
-				break;
-			case 'o':
-				output = optarg;
-				break;
-			case 'b':
-				generator.setBgColor(optarg);
-				break;
-			case 's':
-				generator.setScaleColor(optarg);
-				break;
-			case 'r':
-				generator.setOriginColor(optarg);
-				break;
-			case 'p':
-				generator.setPlayerColor(optarg);
-				break;
-			case 'B':
-				generator.setTileBorderColor(optarg);
-				break;
-			case 'R':
-				generator.setDrawOrigin(true);
-				break;
-			case 'P':
-				generator.setDrawPlayers(true);
-				break;
-			case 'S':
-				generator.setDrawScale(true);
-				break;
-			case 'v':
-				generator.verboseCoordinates = true;
-				generator.verboseStatistics = true;
-				break;
-			case 'e':
-				generator.setDrawAlpha(true);
-				break;
-			case 'H':
-				generator.setShading(false);
-				break;
-			case OPT_SQLITE_CACHEWORLDROW:
-				generator.setSqliteCacheWorldRow(true);
-				break;
-			case OPT_PROGRESS_INDICATOR:
-				generator.enableProgressIndicator();
-				break;
-			case 'a': {
-					istringstream iss;
-					iss.str(optarg);
-					int miny;
-					iss >> miny;
-					generator.setMinY(miny);
-				}
-				break;
-			case 'c': {
-					istringstream iss;
-					iss.str(optarg);
-					int maxy;
-					iss >> maxy;
-					generator.setMaxY(maxy);
-				}
-				break;
-			case 't': {
-					istringstream tilesize;
-					tilesize.str(optarg);
-					int size, border;
-					char c;
-					tilesize >> size;
-					if (tilesize.fail() || size<0) {
-						usage();
-						exit(1);
+			switch (c) {
+				case 'h':
+					usage();
+					return 0;
+					break;
+				case 'i':
+					input = optarg;
+					break;
+				case 'o':
+					output = optarg;
+					break;
+				case 'b':
+					generator.setBgColor(optarg);
+					break;
+				case 's':
+					generator.setScaleColor(optarg);
+					break;
+				case 'r':
+					generator.setOriginColor(optarg);
+					break;
+				case 'p':
+					generator.setPlayerColor(optarg);
+					break;
+				case 'B':
+					generator.setTileBorderColor(optarg);
+					break;
+				case 'R':
+					generator.setDrawOrigin(true);
+					break;
+				case 'P':
+					generator.setDrawPlayers(true);
+					break;
+				case 'S':
+					generator.setDrawScale(true);
+					break;
+				case 'v':
+					generator.verboseCoordinates = true;
+					generator.verboseStatistics = true;
+					break;
+				case 'e':
+					generator.setDrawAlpha(true);
+					break;
+				case 'H':
+					generator.setShading(false);
+					break;
+				case OPT_SQLITE_CACHEWORLDROW:
+					generator.setSqliteCacheWorldRow(true);
+					break;
+				case OPT_PROGRESS_INDICATOR:
+					generator.enableProgressIndicator();
+					break;
+				case 'a': {
+						istringstream iss;
+						iss.str(optarg);
+						int miny;
+						iss >> miny;
+						generator.setMinY(miny);
 					}
-					generator.setTileSize(size, size);
-					tilesize >> c >> border;
-					if (!tilesize.fail()) {
-						if (c != '+' || border < 1) {
+					break;
+				case 'c': {
+						istringstream iss;
+						iss.str(optarg);
+						int maxy;
+						iss >> maxy;
+						generator.setMaxY(maxy);
+					}
+					break;
+				case 't': {
+						istringstream tilesize;
+						tilesize.str(optarg);
+						int size, border;
+						char c;
+						tilesize >> size;
+						if (tilesize.fail() || size<0) {
 							usage();
 							exit(1);
 						}
-						generator.setTileBorderSize(border);
+						generator.setTileSize(size, size);
+						tilesize >> c >> border;
+						if (!tilesize.fail()) {
+							if (c != '+' || border < 1) {
+								usage();
+								exit(1);
+							}
+							generator.setTileBorderSize(border);
+						}
 					}
-				}
-				break;
-			case 'T': {
-					istringstream origin;
-					origin.str(optarg);
-					int x, y;
-					char c;
-					origin >> x >> c >> y;
-					if (origin.fail() || c != ':') {
-						if (string("center-world") == optarg)
-							generator.setTileOrigin(TILECENTER_IS_WORLDCENTER, TILECENTER_IS_WORLDCENTER);
-						else if (string("center-map") == optarg)
-							generator.setTileOrigin(TILECENTER_IS_MAPCENTER, TILECENTER_IS_MAPCENTER);
+					break;
+				case 'T': {
+						istringstream origin;
+						origin.str(optarg);
+						int x, y;
+						char c;
+						origin >> x >> c >> y;
+						if (origin.fail() || c != ':') {
+							if (string("center-world") == optarg)
+								generator.setTileOrigin(TILECENTER_IS_WORLDCENTER, TILECENTER_IS_WORLDCENTER);
+							else if (string("center-map") == optarg)
+								generator.setTileOrigin(TILECENTER_IS_MAPCENTER, TILECENTER_IS_MAPCENTER);
+							else {
+								usage();
+								exit(1);
+							}
+						}
 						else {
+							generator.setTileOrigin(x, y);
+						}
+					}
+					break;
+				case 'g': {
+						istringstream geometry;
+						geometry.str(optarg);
+						int x, y, w, h;
+						char c;
+						geometry >> x >> c >> y >> w >> h;
+						if (geometry.fail() || c != ':' || w < 1 || h < 1) {
 							usage();
 							exit(1);
 						}
+						generator.setGeometry(x, y, w, h);
 					}
-					else {
-						generator.setTileOrigin(x, y);
-					}
-				}
-				break;
-			case 'g': {
-					istringstream geometry;
-					geometry.str(optarg);
-					int x, y, w, h;
-					char c;
-					geometry >> x >> c >> y >> w >> h;
-					if (geometry.fail() || c != ':' || w < 1 || h < 1) {
-						usage();
-						exit(1);
-					}
-					generator.setGeometry(x, y, w, h);
-				}
-				break;
-			case 'G':
-				generator.setForceGeom(true);
-				break;
-			case 'd':
-				generator.setBackend(optarg);
-				break;
-			default:
-				exit(1);
+					break;
+				case 'G':
+					generator.setForceGeom(true);
+					break;
+				case 'd':
+					generator.setBackend(optarg);
+					break;
+				default:
+					exit(1);
+			}
 		}
+	} catch(std::runtime_error e) {
+		std::cout<<"Command-line error: "<<e.what()<<std::endl;
+		return 1;
 	}
 	try {
 		generator.generate(input, output);
