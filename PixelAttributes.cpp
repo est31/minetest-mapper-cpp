@@ -38,9 +38,13 @@ void PixelAttributes::setWidth(int width)
 
 void PixelAttributes::scroll()
 {
+	PixelAttribute *tmp;
+	tmp = m_pixelAttributes[PreviousLine];
+	m_pixelAttributes[PreviousLine] = m_pixelAttributes[LastLine];
+	m_pixelAttributes[LastLine] = tmp;
+
 	size_t lineLength = m_width * sizeof(PixelAttribute);
-	memcpy(m_pixelAttributes[PreviousLine], m_pixelAttributes[LastLine], lineLength);
-	for (size_t i = 1; i < LineCount - 1; ++i) {
+	for (int i = PreviousLine; i <= LastLine; ++i) {
 		memcpy(m_pixelAttributes[i], m_pixelAttributes[EmptyLine], lineLength);
 	}
 }
