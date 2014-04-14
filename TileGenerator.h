@@ -119,7 +119,7 @@ private:
 	void renderMap();
 	std::list<int> getZValueList() const;
 	Block getBlockOnPos(BlockPos pos);
-	void pushPixelRows(int zPos);
+	void pushPixelRows(int zPos, int zLimit);
 	void renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version);
 	void renderScale();
 	void renderOrigin();
@@ -128,6 +128,8 @@ private:
 	void printUnknown();
 	int getImageX(int val) const;
 	int getImageY(int val) const;
+	int getXBegin(int xPos) const { return (xPos - m_xMin) * 16; }
+	int getZBegin(int zPos) const { return (m_zMax - zPos) * 16; }
 
 public:
 	bool verboseCoordinates;
@@ -165,8 +167,8 @@ private:
 	int m_reqYMax;
 	int m_reqZMin;
 	int m_reqZMax;
-	int m_reqYMinNode;	// Node offset within a map block
-	int m_reqYMaxNode;	// Node offset within a map block
+	int m_reqYMinNode;		// Node offset within a map block
+	int m_reqYMaxNode;		// Node offset within a map block
 	int m_mapWidth;
 	int m_mapHeight;
 	int m_tileXOrigin;

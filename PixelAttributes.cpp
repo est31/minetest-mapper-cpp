@@ -15,11 +15,8 @@
 using namespace std;
 
 PixelAttributes::PixelAttributes():
-	m_width(0)
+	m_pixelAttributes(0)
 {
-	for (size_t i = 0; i < LineCount; ++i) {
-		m_pixelAttributes[i] = 0;
-	}
 }
 
 PixelAttributes::~PixelAttributes()
@@ -27,35 +24,66 @@ PixelAttributes::~PixelAttributes()
 	freeAttributes();
 }
 
-void PixelAttributes::setWidth(int width)
+void PixelAttributes::setParameters(int width, int lines)
 {
 	freeAttributes();
 	m_width = width + 1; // 1px gradient calculation
-	for (size_t i = 0; i < LineCount; ++i) {
+	m_previousLine = 0;
+	m_firstLine = 1;
+	m_lastLine = m_firstLine + lines - 1;
+	m_emptyLine = m_lastLine + 1;
+	m_lineCount = m_emptyLine + 1;
+	m_firstY = 0;
+	m_lastY = -1;
+	m_firstUnshadedY = 0;
+
+	m_pixelAttributes = new PixelAttribute *[m_lineCount];
+	if (!m_pixelAttributes)
+		throw std::runtime_error("Failed to allocate memory for PixelAttributes");
+
+	for (int i = 0; i < m_lineCount; ++i) {
 		m_pixelAttributes[i] = new PixelAttribute[m_width];
+		if (!m_pixelAttributes[i])
+			throw std::runtime_error("Failed to allocate memory for PixelAttributes");
 	}
+	for (int i=0; i<m_lineCount; i++)
+		for (int j=0; j<m_width; j++)
+			m_pixelAttributes[i][j].a=0;
 }
 
-void PixelAttributes::scroll()
+void PixelAttributes::scroll(int keepY)
 {
-	PixelAttribute *tmp;
-	tmp = m_pixelAttributes[PreviousLine];
-	m_pixelAttributes[PreviousLine] = m_pixelAttributes[LastLine];
-	m_pixelAttributes[LastLine] = tmp;
+	int scroll = keepY - m_firstY;
+	if (scroll > 0) {
+		int i;
+		for (i = m_previousLine; i + scroll <= m_lastLine; i++) {
+			PixelAttribute *tmp;
+			tmp = m_pixelAttributes[i];
+			m_pixelAttributes[i] = m_pixelAttributes[i + scroll];
+			m_pixelAttributes[i + scroll] = tmp;
+		}
 
-	size_t lineLength = m_width * sizeof(PixelAttribute);
-	for (int i = PreviousLine; i <= LastLine; ++i) {
-		memcpy(m_pixelAttributes[i], m_pixelAttributes[EmptyLine], lineLength);
+		size_t lineLength = m_width * sizeof(PixelAttribute);
+		for (; i <= m_lastLine; ++i) {
+			memcpy(m_pixelAttributes[i], m_pixelAttributes[m_emptyLine], lineLength);
+		}
+
+		m_firstY += scroll;
+		m_firstUnshadedY -= scroll;
+		if (m_firstUnshadedY < m_firstY) m_firstUnshadedY = m_firstY;
 	}
 }
 
 void PixelAttributes::freeAttributes()
 {
-	for (size_t i = 0; i < LineCount; ++i) {
-		if (m_pixelAttributes[i] != 0) {
-			delete[] m_pixelAttributes[i];
-			m_pixelAttributes[i] = 0;
+	if (m_pixelAttributes) {
+		for (int i = 0; i < m_lineCount; ++i) {
+			if (m_pixelAttributes[i] != 0) {
+				delete[] m_pixelAttributes[i];
+			}
 		}
+		delete[] m_pixelAttributes;
+		m_pixelAttributes = 0;
 	}
 }
 
@@ -76,32 +104,34 @@ static inline double colorSafeBounds(double color)
 
 void PixelAttributes::renderShading(bool drawAlpha)
 {
-	for (int z = FirstLine; z <= LastLine; z++) {
+	int y;
+	for (y = yCoord2Line(m_firstUnshadedY); y <= yCoord2Line(m_lastY); y++) {
 		for (int x = 1; x < m_width; x++) {
-			if (!m_pixelAttributes[z][x].valid_height() || !m_pixelAttributes[z - 1][x].valid_height() || !m_pixelAttributes[z][x - 1].valid_height())
+			if (!m_pixelAttributes[y][x].is_valid() || !m_pixelAttributes[y - 1][x].is_valid() || !m_pixelAttributes[y][x - 1].is_valid())
 				continue;
-			double y = m_pixelAttributes[z][x].h;
-			double y1 = m_pixelAttributes[z][x - 1].h;
-			double y2 = m_pixelAttributes[z - 1][x].h;
-			double d = (y - y1) + (y - y2);
+			double h = m_pixelAttributes[y][x].h;
+			double h1 = m_pixelAttributes[y][x - 1].h;
+			double h2 = m_pixelAttributes[y - 1][x].h;
+			double d = (h - h1) + (h - h2);
 			if (d > 3) {
 				d = 3;
 			}
 			d = d * 12 / 255;
 			if (drawAlpha)
-				d = d * (1 - m_pixelAttributes[z][x].t);
-			PixelAttribute &pixel = m_pixelAttributes[z][x];
+				d = d * (1 - m_pixelAttributes[y][x].t);
+			PixelAttribute &pixel = m_pixelAttributes[y][x];
 			pixel.r = colorSafeBounds(pixel.r + d);
 			pixel.g = colorSafeBounds(pixel.g + d);
 			pixel.b = colorSafeBounds(pixel.b + d);
 		}
 	}
+	m_firstUnshadedY = y - yCoord2Line(0);
 }
 
 void PixelAttribute::mixUnder(const PixelAttribute &p)
 {
 	int prev_alpha = alpha();
-	if (!valid_height() || a==0) {
+	if (!is_valid() || a==0) {
 		r = p.r;
 		g = p.g;
 		b = p.b;

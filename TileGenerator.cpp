@@ -499,23 +499,31 @@ inline BlockPos TileGenerator::decodeBlockPos(int64_t blockId) const
 	return pos;
 }
 
-void TileGenerator::pushPixelRows(int zPos) {
-	int zBegin = (m_zMax - zPos) * 16;
-	for (int x=0; x<m_mapWidth; x++) {
-		for (int z=0; z<16; z++) {
-			PixelAttribute &pixel = m_blockPixelAttributes.attribute(z,x);
-			if (pixel.valid_height())
-				m_image->tpixels[getImageY(zBegin + z)][getImageX(x)] = pixel.color().to_libgd();
+void TileGenerator::pushPixelRows(int zPos, int zLimit) {
+	if (m_shading)
+		m_blockPixelAttributes.renderShading(m_drawAlpha);
+	int zBegin = getZBegin(zPos);
+	int z;
+	for (z = zBegin; z < zBegin + 16; z++) {
+		for (int x=0; x < m_mapWidth; x++) {
+			PixelAttribute &pixel = m_blockPixelAttributes.attribute(z, x);
+			if (pixel.is_valid())
+				m_image->tpixels[getImageY(z)][getImageX(x)] = pixel.color().to_libgd();
 		}
 	}
-	m_blockPixelAttributes.scroll();
+	m_blockPixelAttributes.scroll(z);
+	zPos--;
+	if (zPos > zLimit) {
+		zBegin = (m_zMax - zPos) * 16;
+		m_blockPixelAttributes.scroll(zBegin + 16);
+	}
 }
 
 void TileGenerator::createImage()
 {
 	m_mapWidth = (m_xMax - m_xMin + 1) * 16;
 	m_mapHeight = (m_zMax - m_zMin + 1) * 16;
-	m_blockPixelAttributes.setWidth(m_mapWidth);
+	m_blockPixelAttributes.setParameters(m_mapWidth, 16);
 
 	// Set special values for origin (which depend on other paramters)
 	if (m_tileWidth) {
@@ -610,6 +618,8 @@ void TileGenerator::createImage()
 		int borderColor = m_tileBorderColor.to_libgd();
 		for (int i = 0; i < tileBorderXLimit - tileBorderXStart; i++) {
 			int xPos = m_tileMapXOffset + i * (m_tileWidth + m_tileBorderSize);
+			//int xPos2 = getImageX(m_tileMapXOffset + i * m_tileWidth) - m_border - 1;
+			//assert(xPos == xPos2);
 			gdImageFilledRectangle(m_image, xPos + m_border, m_border, xPos + (m_tileBorderSize-1) + m_border, pictHeight + m_border - 1, borderColor);
 		}
 	}
@@ -617,6 +627,8 @@ void TileGenerator::createImage()
 		int borderColor = m_tileBorderColor.to_libgd();
 		for (int i = 0; i < tileBorderZLimit - tileBorderZStart; i++) {
 			int yPos = m_tileMapYOffset + i * (m_tileHeight + m_tileBorderSize);
+			//int yPos2 = getImageY(m_tileMapYOffset + i * m_tileHeight) - m_border - 1;
+			//assert(yPos == yPos2);
 			gdImageFilledRectangle(m_image, m_border, yPos + m_border, pictWidth + m_border - 1, yPos + (m_tileBorderSize-1) + m_border, borderColor);
 		}
 	}
@@ -663,13 +675,13 @@ void TileGenerator::renderMap()
 		const BlockPos &pos = *position;
 		if (currentPos.x != pos.x || currentPos.z != pos.z) {
 			area_rendered++;
-			if (currentPos.z != INT_MIN && currentPos.z != pos.z) {
-				if (m_shading)
-					m_blockPixelAttributes.renderShading(m_drawAlpha);
-				pushPixelRows(currentPos.z);
+			if (currentPos.z != pos.z) {
+				if (currentPos.z != INT_MIN)
+					pushPixelRows(currentPos.z, pos.z);
+				m_blockPixelAttributes.setLastY((m_zMax - pos.z) * 16 + 15);
+				if (progressIndicator)
+				    cout << "Processing Z-coordinate: " << std::setw(5) << pos.z*16 << "\r" << std::flush;
 			}
-			if (progressIndicator && currentPos.z != pos.z)
-			    cout << "Processing Z-coordinate: " << std::setw(5) << pos.z*16 << "\r" << std::flush;
 			for (int i = 0; i < 16; ++i) {
 				m_readedPixels[i] = 0;
 			}
@@ -772,11 +784,8 @@ void TileGenerator::renderMap()
 			}
 		}
 	}
-	if (currentPos.z != INT_MIN) {
-		if (m_shading)
-			m_blockPixelAttributes.renderShading(m_drawAlpha);
-		pushPixelRows(currentPos.z);
-	}
+	if (currentPos.z != INT_MIN)
+		pushPixelRows(currentPos.z, currentPos.z - 1);
 	if (verboseStatistics)
 		cout << "Statistics"
 		     << ":  blocks read: " << m_db->getBlocksReadCount()
@@ -793,7 +802,8 @@ void TileGenerator::renderMap()
 
 inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version)
 {
-	int xBegin = (pos.x - m_xMin) * 16;
+	int xBegin = getXBegin(pos.x);
+	int zBegin = getZBegin(pos.z);
 	const unsigned char *mapData = mapBlock.c_str();
 	int minY = (pos.y < m_reqYMin) ? 16 : (pos.y > m_reqYMin) ?  0 : m_reqYMinNode;
 	int maxY = (pos.y > m_reqYMax) ? -1 : (pos.y < m_reqYMax) ? 15 : m_reqYMaxNode;
@@ -816,13 +826,13 @@ inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const
 				if (color != m_colors.end()) {
 					PixelAttribute pixel = PixelAttribute(color->second, pos.y * 16 + y);
 					if (m_drawAlpha) {
-						m_blockPixelAttributes.attribute(15 - z,xBegin + x).mixUnder(pixel);
+						m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x).mixUnder(pixel);
 						if(pixel.alpha() == 0xff) {
 							m_readedPixels[z] |= (1 << x);
 							break;
 						}
 					} else {
-						m_blockPixelAttributes.attribute(15 - z, xBegin + x) = pixel;
+						m_blockPixelAttributes.attribute(zBegin + 15 - z, xBegin + x) = pixel;
 						m_readedPixels[z] |= (1 << x);
 						break;
 					}

@@ -13,6 +13,7 @@
 #include <limits>
 #include <cmath>
 #include <stdint.h>
+#include <stdexcept>
 #include "config.h"
 #include "Color.h"
 
@@ -34,7 +35,7 @@ struct PixelAttribute {
 	unsigned height(void) const { return unsigned(h+0.5); }
 	Color color(void) const { return Color(red(), green(), blue(), alpha()); }
 
-	inline bool valid_height() const { return !isnan(h); }
+	inline bool is_valid() const { return !isnan(h); }
 	PixelAttribute &operator=(const PixelAttribute &p);
 	void mixUnder(const PixelAttribute &p);
 };
@@ -44,24 +45,27 @@ class PixelAttributes
 public:
 	PixelAttributes();
 	virtual ~PixelAttributes();
-	void setWidth(int width);
-	void scroll();
-	inline PixelAttribute &attribute(int z, int x) { return m_pixelAttributes[z + 1][x + 1]; };
+	void setParameters(int width, int lines);
+	void scroll(int keepY);
+	inline PixelAttribute &attribute(int y, int x) { return m_pixelAttributes[yCoord2Line(y)][x + 1]; };
 	void renderShading(bool drawAlpha);
+	void setLastY(int y) { m_lastY = y; }
 
 private:
+	int yCoord2Line(int y) { return y - m_firstY + m_firstLine; }
 	void freeAttributes();
 
 private:
-	enum Line {
-		PreviousLine = 0,
-		FirstLine = 1,
-		LastLine = BLOCK_SIZE,
-		EmptyLine = BLOCK_SIZE + 1,
-		LineCount = BLOCK_SIZE + 2
-	};
-	PixelAttribute *m_pixelAttributes[BLOCK_SIZE + 2]; // 1px gradient + empty
+	int m_previousLine;
+	int m_firstLine;
+	int m_lastLine;
+	int m_emptyLine;
+	int m_lineCount;
+	PixelAttribute **m_pixelAttributes;
 	int m_width;
+	int m_firstY;
+	int m_lastY;
+	int m_firstUnshadedY;
 };
 
 
