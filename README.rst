@@ -100,6 +100,7 @@ forcegeometry:
 sqlite-cacheworldrow:
     When using sqlite, read an entire world row at one, instead of reading
     one block at a time.
+
     This may improve performance when a large percentage of the world is mapped.
 
 tiles <tilesize>[+<border>]
@@ -108,13 +109,21 @@ tiles <tilesize>[+<border>]
     In order to preserve all map pixels (and to prevent overwriting them with
     borders), extra pixel rows and columns for the borders are inserted into
     the map.
+
     In order to allow partial world maps to be combined into larger maps, edge
     borders of the map are always drawn on the same side (left or top). Other
     edges are always border-less.
+
+    Examples:
+
     `--tiles 1000`
+
     `--tiles 1000+2`
+
     NOTE: As a consequence of preserving all map pixels:
+
     * tiled maps may look slightly distorted, due to the inserted borders.
+
     * scale markers never align with tile borders, as the borders are
       logically *between* pixels, so they have no actual coordinates.
 
@@ -122,19 +131,29 @@ tiles <tilesize>[+<border>]
 tileorigin x:y
     Arrange the tiles so that one tile has its bottom-left (i.e. south-west)
     corner at map coordinates x,y.
+
     By default, tiles are arranged so that one tile has map coordinate 0,0 at
     its center.
+
+    Examples:
+
     `--tileorigin -500,-500`
+
     `--tileorigin center-map`
+
     `--tileorigin center-world`
 
 tilebordercolor
     Color of border between tiles, `--tilebordercolor #000000`
 
 verbose:
-    report some useful/ interesting information:
+    report some useful / interesting information:
+
     * maximum coordinates of the world
+
     * world coordinates included the map being generated
+
     * number of blocks: in the world, and in the map area.
+
     * database access statistics.
 
