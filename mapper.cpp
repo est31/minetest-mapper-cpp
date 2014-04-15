@@ -43,7 +43,7 @@ void usage()
 		        "  --forcegeometry\n"
 			"  --sqlite-cacheworldrow\n"
 			"  --tiles <tilesize>[+<border>]\n"
-			"  --tileorigin x:y|center-world|center-map\n"
+			"  --tileorigin x,y|center-world|center-map\n"
 			"  --verbose\n"
 			"  --progress\n"
 			"Color format: '#000000'\n";
@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
 						int x, y;
 						char c;
 						origin >> x >> c >> y;
-						if (origin.fail() || c != ':') {
+						if (origin.fail() || (c != ':' && c != ',')) {
 							if (string("center-world") == optarg)
 								generator.setTileOrigin(TILECENTER_IS_WORLDCENTER, TILECENTER_IS_WORLDCENTER);
 							else if (string("center-map") == optarg)

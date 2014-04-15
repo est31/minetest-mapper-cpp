@@ -128,7 +128,7 @@ tiles <tilesize>[+<border>]
       logically *between* pixels, so they have no actual coordinates.
 
 
-tileorigin x:y
+tileorigin x,y
     Arrange the tiles so that one tile has its bottom-left (i.e. south-west)
     corner at map coordinates x,y.
 
