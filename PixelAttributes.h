@@ -14,6 +14,7 @@
 #include <cmath>
 #include <stdint.h>
 #include <stdexcept>
+#include <cassert>
 #include "config.h"
 #include "Color.h"
 
@@ -47,9 +48,10 @@ public:
 	virtual ~PixelAttributes();
 	void setParameters(int width, int lines);
 	void scroll(int keepY);
-	inline PixelAttribute &attribute(int y, int x) { return m_pixelAttributes[yCoord2Line(y)][x + 1]; };
+	PixelAttribute &attribute(int y, int x);
 	void renderShading(bool drawAlpha);
 	void setLastY(int y) { m_lastY = y; }
+	int getLastY(void) { return m_lastY; }
 
 private:
 	int yCoord2Line(int y) { return y - m_firstY + m_firstLine; }
@@ -68,6 +70,18 @@ private:
 	int m_firstUnshadedY;
 };
 
+
+inline PixelAttribute &PixelAttributes::attribute(int y, int x)
+{
+#ifdef DEBUG
+	assert(yCoord2Line(y) >= m_firstLine && yCoord2Line(y) <= m_lastLine);
+#else
+	static PixelAttribute p;
+	if (!(yCoord2Line(y) >= m_firstLine && yCoord2Line(y) <= m_lastLine))
+		return p;
+#endif
+	return m_pixelAttributes[yCoord2Line(y)][x + 1];
+}
 
 inline PixelAttribute::PixelAttribute(const Color &color, double height) :
 	h(height), t(0), a(color.a/255.0),

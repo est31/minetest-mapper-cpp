@@ -99,7 +99,8 @@ public:
 	void setGeometry(int x, int y, int w, int h);
 	void setMinY(int y);
 	void setMaxY(int y);
-	void setForceGeom(bool forceGeom);
+	void setShrinkGeometry(bool shrink);
+	void setBlockGeometry(bool block);
 	void setSqliteCacheWorldRow(bool cacheWorldRow);
 	void setTileBorderColor(const std::string &tileBorderColor);
 	void setTileBorderSize(int size);
@@ -116,20 +117,23 @@ private:
 	void loadBlocks();
 	BlockPos decodeBlockPos(int64_t blockId) const;
 	void createImage();
+	void computeMapParameters();
 	void renderMap();
 	std::list<int> getZValueList() const;
 	Block getBlockOnPos(BlockPos pos);
-	void pushPixelRows(int zPos, int zLimit);
+	void pushPixelRows(int zPosLimit);
 	void renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version);
 	void renderScale();
 	void renderOrigin();
 	void renderPlayers(const std::string &inputPath);
 	void writeImage(const std::string &output);
 	void printUnknown();
-	int getImageX(int val) const;
-	int getImageY(int val) const;
-	int getXBegin(int xPos) const { return (xPos - m_xMin) * 16; }
-	int getZBegin(int zPos) const { return (m_zMax - zPos) * 16; }
+	int mapX2ImageX(int val) const;
+	int mapY2ImageY(int val) const;
+	int worldX2ImageX(int val) const;
+	int worldZ2ImageY(int val) const;
+	int worldBlockX2StoredX(int xPos) const { return (xPos - m_xMin) * 16; }
+	int worldBlockZ2StoredY(int zPos) const { return (m_zMax - zPos) * 16; }
 
 public:
 	bool verboseCoordinates;
@@ -149,7 +153,8 @@ private:
 	bool m_shading;
 	int m_border;
 	std::string m_backend;
-	bool m_forceGeom;
+	bool m_shrinkGeometry;
+	bool m_blockGeometry;
 	bool m_sqliteCacheWorldRow;
 
 	DB *m_db;
@@ -169,8 +174,13 @@ private:
 	int m_reqZMax;
 	int m_reqYMinNode;		// Node offset within a map block
 	int m_reqYMaxNode;		// Node offset within a map block
-	int m_mapWidth;
-	int m_mapHeight;
+	int m_storedWidth;
+	int m_storedHeight;
+	int m_mapXStartNodeOffset;
+	int m_mapYStartNodeOffset;
+	int m_mapXEndNodeOffset;
+	int m_mapYEndNodeOffset;
+	int m_nextStoredYCoord;
 	int m_tileXOrigin;
 	int m_tileZOrigin;
 	int m_tileWidth;
@@ -178,6 +188,10 @@ private:
 	int m_tileBorderSize;
 	int m_tileMapXOffset;
 	int m_tileMapYOffset;
+	int m_tileBorderXCount;
+	int m_tileBorderYCount;
+	int m_pictWidth;
+	int m_pictHeight;
 	std::list<BlockPos> m_positions;
 	std::map<int, std::string> m_nameMap;
 	ColorMap m_colors;

@@ -91,7 +91,8 @@ TileGenerator::TileGenerator():
 	m_shading(true),
 	m_border(0),
 	m_backend("sqlite3"),
-	m_forceGeom(false),
+	m_shrinkGeometry(false),
+	m_blockGeometry(false),
 	m_sqliteCacheWorldRow(false),
 	m_image(0),
 	m_xMin(INT_MAX/16-1),
@@ -108,6 +109,11 @@ TileGenerator::TileGenerator():
 	m_reqZMax(MINETEST_MAPBLOCK_MAX),
 	m_reqYMinNode(0),
 	m_reqYMaxNode(15),
+	m_mapXStartNodeOffset(0),
+	m_mapYStartNodeOffset(0),
+	m_mapXEndNodeOffset(0),
+	m_mapYEndNodeOffset(0),
+	m_nextStoredYCoord(0),
 	m_tileXOrigin(TILECENTER_IS_WORLDCENTER),
 	m_tileZOrigin(TILECENTER_IS_WORLDCENTER),
 	m_tileWidth(0),
@@ -127,9 +133,14 @@ void TileGenerator::setBgColor(const std::string &bgColor)
 	m_bgColor = parseColor(bgColor);
 }
 
-void TileGenerator::setForceGeom(bool forceGeom)
+void TileGenerator::setShrinkGeometry(bool shrink)
 {
-	m_forceGeom = forceGeom;
+	m_shrinkGeometry = shrink;
+}
+
+void TileGenerator::setBlockGeometry(bool block)
+{
+	m_blockGeometry = block;
 }
 
 void TileGenerator::setSqliteCacheWorldRow(bool cacheWorldRow)
@@ -240,6 +251,8 @@ void TileGenerator::setGeometry(int x, int y, int w, int h)
 	else {
 		m_reqZMin = (y - 15) / 16;
 	}
+	m_mapXStartNodeOffset = x - m_reqXMin * 16;
+	m_mapYEndNodeOffset = m_reqZMin * 16 - y;
 
 	int x2 = x + w - 1;
 	int y2 = y + h - 1;
@@ -256,6 +269,8 @@ void TileGenerator::setGeometry(int x, int y, int w, int h)
 	else {
 		m_reqZMax = (y2 - 15) / 16;
 	}
+	m_mapXEndNodeOffset = x2 - (m_reqXMax * 16 + 15);
+	m_mapYStartNodeOffset = (m_reqZMax * 16 + 15) - y2;
 }
 
 void TileGenerator::setMinY(int y)
@@ -305,6 +320,7 @@ void TileGenerator::generate(const std::string &input, const std::string &output
 
 	openDb(input_path);
 	loadBlocks();
+	computeMapParameters();
 	createImage();
 	renderMap();
 	if (m_drawScale) {
@@ -378,13 +394,31 @@ void TileGenerator::loadBlocks()
 	long long world_blocks;
 	long long map_blocks;
 	if (verboseCoordinates) {
-		cout << "Requested Geometry:   "
-			<< m_reqXMin*16 << "," << m_reqYMin*16+m_reqYMinNode << "," << m_reqZMin*16 << ".."
-			<< m_reqXMax*16+15 << "," << m_reqYMax*16+m_reqYMaxNode << "," << m_reqZMax*16+15
-			<< "    ("
-			<< m_reqXMin << "," << m_reqYMin << "," << m_reqZMin << ".."
-			<< m_reqXMax << "," << m_reqYMax << "," << m_reqZMax
-			<< ")\n";
+		bool partialBlocks = (m_mapXStartNodeOffset || m_mapXEndNodeOffset || m_mapYStartNodeOffset || m_mapYEndNodeOffset);
+		if (partialBlocks) {
+			cout << (m_blockGeometry ? "Command-line Geometry:  " : "Requested Geometry:     ")
+				<< m_reqXMin*16+m_mapXStartNodeOffset << "," << m_reqYMin*16+m_reqYMinNode << "," << m_reqZMin*16-m_mapYEndNodeOffset << ".."
+				<< m_reqXMax*16+15+m_mapXEndNodeOffset << "," << m_reqYMax*16+m_reqYMaxNode << "," << m_reqZMax*16+15-m_mapYStartNodeOffset
+				<< "    ("
+				<< m_reqXMin << "," << m_reqYMin << "," << m_reqZMin << ".."
+				<< m_reqXMax << "," << m_reqYMax << "," << m_reqZMax
+				<< ")\n";
+		}
+		if (partialBlocks || m_blockGeometry) {
+			cout << (m_blockGeometry ? "Requested Geometry:     " : "Block-aligned Geometry: ")
+				<< m_reqXMin*16 << "," << m_reqYMin*16+m_reqYMinNode << "," << m_reqZMin*16 << ".."
+				<< m_reqXMax*16+15 << "," << m_reqYMax*16+m_reqYMaxNode << "," << m_reqZMax*16+15
+				<< "    ("
+				<< m_reqXMin << "," << m_reqYMin << "," << m_reqZMin << ".."
+				<< m_reqXMax << "," << m_reqYMax << "," << m_reqZMax
+				<< ")\n";
+		}
+	}
+	if (m_blockGeometry) {
+		m_mapXStartNodeOffset = 0;
+		m_mapXEndNodeOffset = 0;
+		m_mapYStartNodeOffset = 0;
+		m_mapYEndNodeOffset = 0;
 	}
 	mapXMin = INT_MAX/16-1;
 	mapXMax = -INT_MIN/16+1;
@@ -452,7 +486,7 @@ void TileGenerator::loadBlocks()
 		m_positions.push_back(pos);
 	}
 	if (verboseCoordinates) {
-		cout << "World Geometry:       "
+		cout << "World Geometry:         "
 			<< mapXMin*16 << "," << mapYMin*16 << "," << mapZMin*16 << ".."
 			<< mapXMax*16+15 << "," << mapYMax*16+15 << "," << mapZMax*16+15
 			<< "    ("
@@ -460,9 +494,15 @@ void TileGenerator::loadBlocks()
 			<< mapXMax << "," << mapYMax << "," << mapZMax
 			<< ")    blocks: " << world_blocks << "\n";
 	}
-	if (m_forceGeom) {
+	if (m_shrinkGeometry) {
+		if (m_xMin != m_reqXMin) m_mapXStartNodeOffset = 0;
+		if (m_xMax != m_reqXMax) m_mapXEndNodeOffset = 0;
+		if (m_zMin != m_reqZMin) m_mapYEndNodeOffset = 0;
+		if (m_zMax != m_reqZMax) m_mapYStartNodeOffset = 0;
+	}
+	else {
 		if (verboseCoordinates) {
-			cout << "Minimal Map Geometry: "
+			cout << "Minimal Map Geometry:   "
 				<< m_xMin*16 << "," << m_yMin*16+m_reqYMinNode << "," << m_zMin*16 << ".."
 				<< m_xMax*16+15 << "," << m_yMax*16+m_reqYMaxNode << "," << m_zMax*16+15
 				<< "    ("
@@ -476,10 +516,10 @@ void TileGenerator::loadBlocks()
 		m_zMax = m_reqZMax;
 	}
 	if (verboseCoordinates) {
-		cout << "Map Vertical Limits:  x," << geomYMin*16 << ",z..x," << geomYMax*16+15 << ",z    (x," <<   geomYMin << ",z..x," <<   geomYMax << ",z)\n";
-		cout << "Map Output Geometry:  "
-			<< m_xMin*16 << "," << m_yMin*16+m_reqYMinNode << "," << m_zMin*16 << ".."
-			<< m_xMax*16+15 << "," << m_yMax*16+m_reqYMaxNode << "," << m_zMax*16+15
+		cout << "Map Vertical Limits:    x," << geomYMin*16 << ",z..x," << geomYMax*16+15 << ",z    (x," <<   geomYMin << ",z..x," <<   geomYMax << ",z)\n";
+		cout << "Map Output Geometry:    "
+			<< m_xMin*16+m_mapXStartNodeOffset << "," << m_yMin*16+m_reqYMinNode << "," << m_zMin*16-m_mapYEndNodeOffset << ".."
+			<< m_xMax*16+15+m_mapXEndNodeOffset << "," << m_yMax*16+m_reqYMaxNode << "," << m_zMax*16+15-m_mapYStartNodeOffset
 			<< "    ("
 			<< m_xMin << "," << m_yMin << "," << m_zMin << ".."
 			<< m_xMax << "," << m_yMax << "," << m_zMax
@@ -499,55 +539,66 @@ inline BlockPos TileGenerator::decodeBlockPos(int64_t blockId) const
 	return pos;
 }
 
-void TileGenerator::pushPixelRows(int zPos, int zLimit) {
+void TileGenerator::pushPixelRows(int zPosLimit) {
 	if (m_shading)
 		m_blockPixelAttributes.renderShading(m_drawAlpha);
-	int zBegin = getZBegin(zPos);
-	int z;
-	for (z = zBegin; z < zBegin + 16; z++) {
-		for (int x=0; x < m_mapWidth; x++) {
-			PixelAttribute &pixel = m_blockPixelAttributes.attribute(z, x);
+	int y;
+	for (y = m_nextStoredYCoord; y <= m_blockPixelAttributes.getLastY() && y < worldBlockZ2StoredY(m_zMin - 1) + m_mapYEndNodeOffset; y++) {
+		for (int x = m_mapXStartNodeOffset; x < worldBlockX2StoredX(m_xMax + 1) + m_mapXEndNodeOffset; x++) {
+			int mapX = x - m_mapXStartNodeOffset;
+			int mapY = y - m_mapYStartNodeOffset;
+			PixelAttribute &pixel = m_blockPixelAttributes.attribute(y, x);
+#ifdef DEBUG
+			{ int ix = mapX2ImageX(mapX); assert(ix - m_border >= 0 && ix - m_border < m_pictWidth); }
+			{ int iy = mapY2ImageY(mapY); assert(iy - m_border >= 0 && iy - m_border < m_pictHeight); }
+#endif
 			if (pixel.is_valid())
-				m_image->tpixels[getImageY(z)][getImageX(x)] = pixel.color().to_libgd();
+				m_image->tpixels[mapY2ImageY(mapY)][mapX2ImageX(mapX)] = pixel.color().to_libgd();
 		}
 	}
-	m_blockPixelAttributes.scroll(z);
-	zPos--;
-	if (zPos > zLimit) {
-		zBegin = (m_zMax - zPos) * 16;
-		m_blockPixelAttributes.scroll(zBegin + 16);
+	m_nextStoredYCoord = y;
+	m_blockPixelAttributes.scroll(y);
+	int yLimit = worldBlockZ2StoredY(zPosLimit);
+	if (y < yLimit) {
+		m_blockPixelAttributes.scroll(yLimit);
+		m_nextStoredYCoord = yLimit;
 	}
 }
 
-void TileGenerator::createImage()
+void TileGenerator::computeMapParameters()
 {
-	m_mapWidth = (m_xMax - m_xMin + 1) * 16;
-	m_mapHeight = (m_zMax - m_zMin + 1) * 16;
-	m_blockPixelAttributes.setParameters(m_mapWidth, 16);
+	m_storedWidth = (m_xMax - m_xMin + 1) * 16;
+	m_storedHeight = (m_zMax - m_zMin + 1) * 16;
+	int mapWidth = m_storedWidth - m_mapXStartNodeOffset + m_mapXEndNodeOffset;
+	int mapHeight = m_storedHeight - m_mapYStartNodeOffset + m_mapYEndNodeOffset;
+	m_blockPixelAttributes.setParameters(m_storedWidth, 16);
 
 	// Set special values for origin (which depend on other paramters)
 	if (m_tileWidth) {
 		if (m_tileXOrigin == TILECENTER_IS_WORLDCENTER)
 			m_tileXOrigin = -m_tileWidth/2;
 		else if (m_tileXOrigin == TILECENTER_IS_MAPCENTER)
-			m_tileXOrigin = ((m_xMax+1)*2-(m_xMax+1-m_xMin))*8 - m_tileWidth/2;
+			//m_tileXOrigin = ((m_xMax+1)*2-(m_xMax+1-m_xMin))*8 - m_tileWidth/2;
+			m_tileXOrigin = m_xMin * 16 + m_mapXStartNodeOffset + mapWidth / 2;
 	}
 	if (m_tileHeight) {
 		if (m_tileZOrigin == TILECENTER_IS_WORLDCENTER)
 			m_tileZOrigin = -m_tileHeight/2;
 		else if (m_tileZOrigin == TILECENTER_IS_MAPCENTER)
-			m_tileZOrigin = ((m_zMax+1)*2-(m_zMax+1-m_zMin))*8 - m_tileHeight/2;
+			//m_tileZOrigin = ((m_zMax+1)*2-(m_zMax+1-m_zMin))*8 - m_tileHeight/2;
+			m_tileZOrigin = -m_xMax * 16 + m_mapYStartNodeOffset + mapHeight / 2;
 	}
 
-	int pictWidth = m_mapWidth;
-	int pictHeight = m_mapHeight;
+	// Compute adjustments for tiles.
+	m_pictWidth = mapWidth;
+	m_pictHeight = mapHeight;
 	int tileBorderXStart = 0;
 	int tileBorderXLimit = 0;
 	int tileBorderZStart = 0;
 	int tileBorderZLimit = 0;
 	if (m_tileWidth && m_tileBorderSize) {
-		int xStart = m_xMin * 16 - m_tileXOrigin;
-		int xLimit = (m_xMax+1) * 16 - m_tileXOrigin;
+		int xStart = m_xMin * 16 + m_mapXStartNodeOffset - m_tileXOrigin;
+		int xLimit = (m_xMax+1) * 16 + m_mapXEndNodeOffset - m_tileXOrigin;
 		int shift;
 		// shift values, so that xStart = 0..m_tileWidth-1
 		// (effect of m_tileXOrigin is identical to (m_tileXOrigin + m_tileWidth)
@@ -566,11 +617,11 @@ void TileGenerator::createImage()
 		tileBorderXStart = (xStart + m_tileWidth - 1) / m_tileWidth;
 		tileBorderXLimit = (xLimit + m_tileWidth - 1) / m_tileWidth;
 		m_tileMapXOffset = (m_tileWidth - xStart) % m_tileWidth;
-		pictWidth += (tileBorderXLimit - tileBorderXStart) * m_tileBorderSize;
+		m_pictWidth += (tileBorderXLimit - tileBorderXStart) * m_tileBorderSize;
 	}
 	if (m_tileHeight && m_tileBorderSize) {
-		int zStart = m_zMin * 16 - m_tileZOrigin;
-		int zLimit = (m_zMax+1) * 16 - m_tileZOrigin;
+		int zStart = m_zMin * 16 - m_mapYEndNodeOffset - m_tileZOrigin;
+		int zLimit = (m_zMax+1) * 16 - m_mapYStartNodeOffset - m_tileZOrigin;
 		int shift;
 		// shift values so that zStart = 0..m_tileHeight-1
 		if (zStart<0)
@@ -586,13 +637,17 @@ void TileGenerator::createImage()
 		tileBorderZStart = zStart / m_tileHeight + 1;
 		tileBorderZLimit = zLimit / m_tileHeight + 1;
 		m_tileMapYOffset = zLimit - ((tileBorderZLimit-tileBorderZStart) * m_tileHeight);
-		pictHeight += (tileBorderZLimit - tileBorderZStart) * m_tileBorderSize;
+		m_pictHeight += (tileBorderZLimit - tileBorderZStart) * m_tileBorderSize;
 	}
 
+	m_tileBorderXCount = tileBorderXLimit - tileBorderXStart;
+	m_tileBorderYCount = tileBorderZLimit - tileBorderZStart;
+	m_nextStoredYCoord = m_mapYStartNodeOffset;
+
 	// Print some useful messages in cases where it may not be possible to generate the image...
-	long long pixels = static_cast<long long>(pictWidth + m_border) * (pictHeight + m_border);
+	long long pixels = static_cast<long long>(m_pictWidth + m_border) * (m_pictHeight + m_border);
 	// Study the libgd code to known why the maximum is the following:
-	long long max_pixels = INT_MAX - INT_MAX % pictHeight;
+	long long max_pixels = INT_MAX - INT_MAX % m_pictHeight;
 	if (pixels > max_pixels) {
 		cerr << "WARNING: Image will have " << pixels << " pixels; the PNG graphics library will refuse to handle more than approximately " << INT_MAX << std::endl;
 	}
@@ -603,33 +658,41 @@ void TileGenerator::createImage()
 		cerr << "WARNING: Image will have " << pixels << " pixels; The maximum achievable on a 32-bit system is approximately " << ESTIMATED_MAX_PIXELS_32BIT << std::endl;
 	}
 	#undef ESTIMATED_MAX_PIXELS_32BIT
+}
 
-	m_image = gdImageCreateTrueColor(pictWidth + m_border, pictHeight + m_border);
+
+void TileGenerator::createImage()
+{
+	m_image = gdImageCreateTrueColor(m_pictWidth + m_border, m_pictHeight + m_border);
 	if (!m_image) {
 		ostringstream oss;
-		oss << "Failed to allocate " << pictWidth + m_border << "x" << pictHeight + m_border << " image";
+		oss << "Failed to allocate " << m_pictWidth + m_border << "x" << m_pictHeight + m_border << " image";
 		throw std::runtime_error(oss.str());
 	}
 	// Background
-	gdImageFilledRectangle(m_image, 0, 0, pictWidth + m_border - 1, pictHeight + m_border -1, m_bgColor.to_libgd());
+	gdImageFilledRectangle(m_image, 0, 0, m_pictWidth + m_border - 1, m_pictHeight + m_border -1, m_bgColor.to_libgd());
 
 	// Draw tile borders
 	if (m_tileWidth && m_tileBorderSize) {
 		int borderColor = m_tileBorderColor.to_libgd();
-		for (int i = 0; i < tileBorderXLimit - tileBorderXStart; i++) {
+		for (int i = 0; i < m_tileBorderXCount; i++) {
 			int xPos = m_tileMapXOffset + i * (m_tileWidth + m_tileBorderSize);
-			//int xPos2 = getImageX(m_tileMapXOffset + i * m_tileWidth) - m_border - 1;
-			//assert(xPos == xPos2);
-			gdImageFilledRectangle(m_image, xPos + m_border, m_border, xPos + (m_tileBorderSize-1) + m_border, pictHeight + m_border - 1, borderColor);
+#ifdef DEBUG
+			int xPos2 = mapX2ImageX(m_tileMapXOffset + i * m_tileWidth) - m_border - 1;
+			assert(xPos == xPos2);
+#endif
+			gdImageFilledRectangle(m_image, xPos + m_border, m_border, xPos + (m_tileBorderSize-1) + m_border, m_pictHeight + m_border - 1, borderColor);
 		}
 	}
 	if (m_tileHeight && m_tileBorderSize) {
 		int borderColor = m_tileBorderColor.to_libgd();
-		for (int i = 0; i < tileBorderZLimit - tileBorderZStart; i++) {
+		for (int i = 0; i < m_tileBorderYCount; i++) {
 			int yPos = m_tileMapYOffset + i * (m_tileHeight + m_tileBorderSize);
-			//int yPos2 = getImageY(m_tileMapYOffset + i * m_tileHeight) - m_border - 1;
-			//assert(yPos == yPos2);
-			gdImageFilledRectangle(m_image, m_border, yPos + m_border, pictWidth + m_border - 1, yPos + (m_tileBorderSize-1) + m_border, borderColor);
+#ifdef DEBUG
+			int yPos2 = mapY2ImageY(m_tileMapYOffset + i * m_tileHeight) - m_border - 1;
+			assert(yPos == yPos2);
+#endif
+			gdImageFilledRectangle(m_image, m_border, yPos + m_border, m_pictWidth + m_border - 1, yPos + (m_tileBorderSize-1) + m_border, borderColor);
 		}
 	}
 }
@@ -677,7 +740,7 @@ void TileGenerator::renderMap()
 			area_rendered++;
 			if (currentPos.z != pos.z) {
 				if (currentPos.z != INT_MIN)
-					pushPixelRows(currentPos.z, pos.z);
+					pushPixelRows(pos.z);
 				m_blockPixelAttributes.setLastY((m_zMax - pos.z) * 16 + 15);
 				if (progressIndicator)
 				    cout << "Processing Z-coordinate: " << std::setw(5) << pos.z*16 << "\r" << std::flush;
@@ -785,7 +848,7 @@ void TileGenerator::renderMap()
 		}
 	}
 	if (currentPos.z != INT_MIN)
-		pushPixelRows(currentPos.z, currentPos.z - 1);
+		pushPixelRows(currentPos.z - 1);
 	if (verboseStatistics)
 		cout << "Statistics"
 		     << ":  blocks read: " << m_db->getBlocksReadCount()
@@ -802,8 +865,8 @@ void TileGenerator::renderMap()
 
 inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version)
 {
-	int xBegin = getXBegin(pos.x);
-	int zBegin = getZBegin(pos.z);
+	int xBegin = worldBlockX2StoredX(pos.x);
+	int zBegin = worldBlockZ2StoredY(pos.z);
 	const unsigned char *mapData = mapBlock.c_str();
 	int minY = (pos.y < m_reqYMin) ? 16 : (pos.y > m_reqYMin) ?  0 : m_reqYMinNode;
 	int maxY = (pos.y > m_reqYMax) ? -1 : (pos.y < m_reqYMax) ? 15 : m_reqYMaxNode;
@@ -857,7 +920,7 @@ void TileGenerator::renderScale()
 		buf << i * 16;
 		scaleText = buf.str();
 
-		int xPos = getImageX(m_xMin * -16 + i * 16);
+		int xPos = worldX2ImageX(i * 16);
 		gdImageString(m_image, gdFontGetMediumBold(), xPos + 2, 0, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
 		gdImageLine(m_image, xPos, 0, xPos, m_border - 1, color);
 	}
@@ -867,7 +930,7 @@ void TileGenerator::renderScale()
 		buf << i * 16;
 		scaleText = buf.str();
 
-		int yPos = getImageY(m_mapHeight - 1 - (i * 16 - m_zMin * 16));
+		int yPos = worldZ2ImageY(i * 16);
 		gdImageString(m_image, gdFontGetMediumBold(), 2, yPos, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
 		gdImageLine(m_image, 0, yPos, m_border - 1, yPos, color);
 	}
@@ -875,8 +938,8 @@ void TileGenerator::renderScale()
 
 void TileGenerator::renderOrigin()
 {
-	int imageX = getImageX(-m_xMin * 16);
-	int imageY = getImageY(m_mapHeight - 1 - m_zMin * -16);
+	int imageX = worldX2ImageX(0);
+	int imageY = worldZ2ImageY(0);
 	gdImageArc(m_image, imageX, imageY, 12, 12, 0, 360, m_originColor.to_libgd());
 }
 
@@ -886,8 +949,8 @@ void TileGenerator::renderPlayers(const std::string &inputPath)
 
 	PlayerAttributes players(inputPath);
 	for (PlayerAttributes::Players::iterator player = players.begin(); player != players.end(); ++player) {
-		int imageX = getImageX(player->x / 10 - m_xMin * 16);
-		int imageY = getImageY(m_mapHeight - 1 - (player->z / 10 - m_zMin * 16));
+		int imageX = worldX2ImageX(player->x / 10);
+		int imageY = worldZ2ImageY(player->z / 10);
 
 		gdImageArc(m_image, imageX, imageY, 5, 5, 0, 360, color);
 		gdImageString(m_image, gdFontGetMediumBold(), imageX + 2, imageY + 2, reinterpret_cast<unsigned char *>(const_cast<char *>(player->name.c_str())), color);
@@ -930,7 +993,8 @@ void TileGenerator::printUnknown()
 	}
 }
 
-inline int TileGenerator::getImageX(int val) const
+// Adjust map coordinate for tiles and border
+inline int TileGenerator::mapX2ImageX(int val) const
 {
 	if (m_tileWidth && m_tileBorderSize)
 		val += ((val - m_tileMapXOffset + m_tileWidth) / m_tileWidth) * m_tileBorderSize + m_border;
@@ -939,12 +1003,27 @@ inline int TileGenerator::getImageX(int val) const
 	return val;
 }
 
-inline int TileGenerator::getImageY(int val) const
+// Adjust map coordinate for tiles and border
+inline int TileGenerator::mapY2ImageY(int val) const
 {
 	if (m_tileHeight && m_tileBorderSize)
 		val += ((val - m_tileMapYOffset + m_tileHeight) / m_tileHeight) * m_tileBorderSize + m_border;
 	else
 		val += m_border;
 	return val;
+}
+
+// Convert world coordinate to image coordinate
+inline int TileGenerator::worldX2ImageX(int val) const
+{
+	val = (val - m_xMin * 16) - m_mapXStartNodeOffset;
+	return mapX2ImageX(val);
+}
+
+// Convert world coordinate to image coordinate
+inline int TileGenerator::worldZ2ImageY(int val) const
+{
+	val = (m_zMax * 16 + 15 - val) - m_mapYStartNodeOffset;
+	return mapY2ImageY(val);
 }
 

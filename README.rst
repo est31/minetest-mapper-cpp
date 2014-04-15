@@ -91,11 +91,83 @@ max-y:
 backend:
     Use specific map backend, supported: sqlite3, leveldb, `--backend leveldb`
 
-geometry:
-    Limit area to specific geometry, `--geometry -800:-800+1600+1600`
+geometry <geometry>:
+cornergeometry  <geometry>:
+centergeometry  <geometry>:
+    Limit the part of the world that is included in the map.
 
-forcegeometry:
-    Generate a map of the requested size, even if the world is smaller.
+    <geometry> has one of the formats:
+
+    <width>x<height>[<+|-xoffset><+|-yoffset>]
+
+    <xoffset>:<yoffset>+width+height
+
+    For cornergeometry, the offsets will be at the lower-left
+    corner of the image (offsets increase from left to right,
+    and from bottom to top).
+
+    For centergeometry, the offsets will be in the center of
+    the image.
+
+    If the offsets are not specified (with the first format),
+    the map is centered on the center of the world.
+
+    By default, the geometry has pixel granularity, and a map of
+    exactly the requested size is generated.
+
+    Only if the *first* geometry option on the command-line is
+    `--geometry`, then for compatibility, the old behavior
+    is default instead (i.e. block granularity, and a smaller
+    map if possible). Block granularity is also enabled when
+    the obsolete option '--forcegeometry' is found first.
+
+    Examples:
+
+    `--geometry 10x10-5-5`
+
+    `--cornergeometry 50x50+100+100`
+
+    `--centergeometry 1100x1300+1000-500`
+
+    `--centergeometry 1100x1300`
+
+geometrymode pixel,block,fixed,shrink:
+    Specify how the geometry should be interpreted. One or
+    more of the flags may be used, separated by commas or
+    spaces. In case of conflicts, the last flag takes
+    precedence.
+
+    When using space as a separator, make sure to enclose
+    the list of flags in quotes!
+
+geometrymode pixel:
+    Interpret the geometry specification with pixel granularity,
+    as opposed to block granularity (see below).
+
+    A map of exactly the requested size is generated (after
+    adjustments due to the 'shrink' flag).
+
+geometrymode block:
+    Interpret the geometry specification with block granularity.
+
+    The requested geometry will be extended so that the map does
+    not contain partial map blocks (of 16x16 nodes each).
+    At *least* all pixels covered by the geometry will be in the
+    map, but there may be up to 15 more in every direction.
+
+geometrymode fixed:
+    Generate a map of the requested geometry, even if part
+    or all of it would be empty.
+
+geometrymode shrink:
+    Generate a map of at most the requested geometry. Shrink
+    it to the smallest possible size that still includes the
+    same information.
+
+    Currently, shrinking is done with block granularity, and
+    based on which blocks are in the database. If the database
+    contains empty, or partially empty blocks, there may still
+    be empty pixels at the edges of the map.
 
 sqlite-cacheworldrow:
     When using sqlite, read an entire world row at one, instead of reading

@@ -39,14 +39,19 @@ void usage()
 			"  --min-y <y>\n"
 			"  --max-y <y>\n"
 			"  --backend <sqlite3/leveldb>\n"
-			"  --geometry x:y+w+h\n"
-		        "  --forcegeometry\n"
+			"  --geometry <geometry>\n"
+			"  --cornergeometry <geometry>\n"
+			"  --centergeometry <geometry>\n"
+			"  --geometrymode pixel,block,fixed,shrink\n"
 			"  --sqlite-cacheworldrow\n"
 			"  --tiles <tilesize>[+<border>]\n"
-			"  --tileorigin x,y|center-world|center-map\n"
+			"  --tileorigin <x>,<y>|center-world|center-map\n"
 			"  --verbose\n"
 			"  --progress\n"
-			"Color format: '#000000'\n";
+			"Color format: '#000000'\n"
+			"Geometry formats:\n"
+			"\t<width>x<heigth>[+|-<xoffset>+|-<yoffset>]\n"
+			"\t<xoffset>:<yoffset>+<width>+<height>\n";
 	std::cout << usage_text;
 }
 
@@ -67,6 +72,9 @@ int main(int argc, char *argv[])
 		{"drawalpha", no_argument, 0, 'e'},
 		{"noshading", no_argument, 0, 'H'},
 		{"geometry", required_argument, 0, 'g'},
+		{"cornergeometry", required_argument, 0, 'g'},
+		{"centergeometry", required_argument, 0, 'g'},
+		{"geometrymode", required_argument, 0, 'G'},
 		{"forcegeometry", no_argument, 0, 'G'},
 		{"min-y", required_argument, 0, 'a'},
 		{"max-y", required_argument, 0, 'c'},
@@ -81,6 +89,7 @@ int main(int argc, char *argv[])
 
 	string input;
 	string output;
+	bool foundGeometrySpec = false;
 
 	TileGenerator generator;
 	try {
@@ -210,21 +219,94 @@ int main(int argc, char *argv[])
 						}
 					}
 					break;
-				case 'g': {
-						istringstream geometry;
-						geometry.str(optarg);
-						int x, y, w, h;
-						char c;
-						geometry >> x >> c >> y >> w >> h;
-						if (geometry.fail() || c != ':' || w < 1 || h < 1) {
+				case 'G':
+					if (long_options[option_index].name[0] == 'f') {
+						// '--forcegeometry'
+						// Old behavior - for compatibility.
+						generator.setShrinkGeometry(false);
+						if (!foundGeometrySpec)
+							generator.setBlockGeometry(true);
+					}
+					else {
+						for (char *c = optarg; *c; c++)
+							if (*c == ',') *c = ' ';
+						istringstream iss;
+						iss.str(optarg);
+						iss >> std::skipws;
+						string flag;
+						while (!iss.eof() && !iss.fail()) {
+							iss >> flag;
+							if (flag == "pixel")
+								generator.setBlockGeometry(false);
+							else if (flag == "block")
+								generator.setBlockGeometry(true);
+							else if (flag == "fixed")
+								generator.setShrinkGeometry(false);
+							else if (flag == "shrink")
+								generator.setShrinkGeometry(true);
+							else {
+								std::cerr << "Invalid geometry mode flag '" << flag << "'" << std::endl;
+								usage();
+								exit(1);
+							}
+						}
+						if (iss.fail()) {
+							// Don't know when / if this could happen...
+							std::cerr << "Error parsing geometry mode flags" << std::endl;
 							usage();
 							exit(1);
 						}
-						generator.setGeometry(x, y, w, h);
 					}
+					foundGeometrySpec = true;
 					break;
-				case 'G':
-					generator.setForceGeom(true);
+				case 'g': {
+						istringstream iss;
+						iss.str(optarg);
+						int p1, p2, p3, p4;
+						char c;
+						iss >> p1 >> c >> p2;
+						if (!iss.fail() && c == 'x' && iss.eof()) {
+							p3 = -(p1 / 2);
+							p4 = -(p2 / 2);
+						}
+						else {
+							char s3, s4;
+							iss >> s3 >> p3 >> s4 >> p4;
+							// accept +-23 as well (for ease of use)
+							if ((s3 != '+'  && s3 != '-') || (s4 != '+' && s4 != '-'))
+								c = 0;	// Causes an 'invalid geometry' message
+							if (s3 == '-') p3 = -p3;
+							if (s4 == '-') p4 = -p4;
+							if (long_options[option_index].name[0] == 'c'
+								&& long_options[option_index].name[1] == 'e') {
+								// option 'centergeometry'
+								p3 -= p1 / 2;
+								p4 -= p2 / 2;
+							}
+						}
+						if (iss.fail() || (c != ':' && c != 'x')) {
+							std::cerr << "Invalid geometry specification '" << optarg << "'" << std::endl;
+							usage();
+							exit(1);
+						}
+						if ((c == ':' && (p3 < 1 || p4 < 1))
+							|| (c == 'x' && (p1 < 1 || p2 < 1))) {
+							std::cerr << "Invalid geometry (width and/or heigth is zero or negative)" << std::endl;
+							usage();
+							exit(1);
+							}
+						if (c == ':')
+							generator.setGeometry(p1, p2, p3, p4);
+						if (c == 'x')
+							generator.setGeometry(p3, p4, p1, p2);
+
+						if (!foundGeometrySpec && long_options[option_index].name[0] == 'g') {
+							// Compatibility when using the option 'geometry'
+							generator.setBlockGeometry(true);
+							generator.setShrinkGeometry(true);
+						}
+						foundGeometrySpec = true;
+					}
 					break;
 				case 'd':
 					generator.setBackend(optarg);
