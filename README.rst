@@ -55,6 +55,18 @@ and `-o` (output image path).
 Parameters
 ^^^^^^^^^^
 
+colors <file>:
+    Filename of the color definition file to use.
+
+    By default, a file 'colors.txt' is used, which may be located:
+
+    * In the directory of the world being mapped
+
+    * In the user's private directory ($HOME/.minetest)
+
+    * For compatibility, in the current directory as a last resort.
+      This causes a warning message to be printed.
+
 bgcolor:
     Background color of image, `--bgcolor #ffffff`
 

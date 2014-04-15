@@ -26,6 +26,7 @@ void usage()
 	const char *usage_text = "minetestmapper [options]\n"
 			"  -i/--input <world_path>\n"
 			"  -o/--output <output_image.png>\n"
+			"  --colors <file>\n"
 			"  --bgcolor <color>\n"
 			"  --scalecolor <color>\n"
 			"  --playercolor <color>\n"
@@ -62,6 +63,7 @@ int main(int argc, char *argv[])
 		{"help", no_argument, 0, 'h'},
 		{"input", required_argument, 0, 'i'},
 		{"output", required_argument, 0, 'o'},
+		{"colors", required_argument, 0, 'C'},
 		{"bgcolor", required_argument, 0, 'b'},
 		{"scalecolor", required_argument, 0, 's'},
 		{"origincolor", required_argument, 0, 'r'},
@@ -89,15 +91,10 @@ int main(int argc, char *argv[])
 
 	string input;
 	string output;
+	string colorsFile;
 	bool foundGeometrySpec = false;
 
 	TileGenerator generator;
-	try {
-		generator.parseColorsFile("colors.txt");
-	} catch(std::runtime_error e) {
-		std::cout<<"Exception: "<<e.what()<<std::endl;
-		return 1;
-	}
 	try {
 		int option_index = 0;
 		int c = 0;
@@ -120,6 +117,9 @@ int main(int argc, char *argv[])
 					break;
 				case 'o':
 					output = optarg;
+					break;
+				case 'C':
+					colorsFile = optarg;
 					break;
 				case 'b':
 					generator.setBgColor(optarg);
@@ -323,7 +323,51 @@ int main(int argc, char *argv[])
 		std::cout<<"Command-line error: "<<e.what()<<std::endl;
 		return 1;
 	}
+
 	try {
+		if (!colorsFile.empty()) {
+			generator.parseColorsFile(colorsFile);
+		}
+		else {
+			bool colorsFound = false;
+			char *homedir;
+			colorsFile = input + PATH_SEPARATOR +  "colors.txt";
+
+			try {
+				generator.parseColorsFile(colorsFile);
+				colorsFound = true;
+			} catch (std::runtime_error e) {
+				// Ignore failure to locate world-specific colors file
+			}
+
+			if (!colorsFound && (homedir = getenv("HOME"))) {
+				colorsFile = string(homedir) + PATH_SEPARATOR + ".minetest" + PATH_SEPARATOR + "colors.txt";
+				try {
+					generator.parseColorsFile(colorsFile);
+					colorsFound = true;
+				} catch (std::runtime_error e) {
+					// Ignore failure to locate user private colors file
+				}
+			}
+
+			// TODO: look for system-wide colors file (?) (e.g. /usr/share/games/minetest/colors.txt)
+			// (location should be subject to a build-time configuration of the installation directory)
+
+			if (!colorsFound) {
+				try {
+					generator.parseColorsFile("colors.txt");
+					// I hope this is not obnoxious to windows users ?
+					cerr	<< "Warning: Using colors.txt in current directory as a last resort." << std::endl
+						<< "         Preferably, store the colors file in the world directory" << std::endl;
+					if (homedir)
+						cerr	<< "         or in the private minetest directory ($HOME/.minetest)." << std::endl;
+					cerr	<< "         It can also be specified on the command-line" << std::endl;
+				} catch(std::runtime_error e) {
+					throw std::runtime_error("Failed to find or failed to open a colors.txt file.");
+				}
+			}
+		}
+
 		generator.generate(input, output);
 	} catch(std::runtime_error e) {
 		std::cout<<"Exception: "<<e.what()<<std::endl;
@@ -331,3 +375,4 @@ int main(int argc, char *argv[])
 	}
 	return 0;
 }
+
