@@ -136,7 +136,7 @@ private:
 	int worldBlockZ2StoredY(int zPos) const { return (m_zMax - zPos) * 16; }
 
 public:
-	bool verboseCoordinates;
+	int verboseCoordinates;
 	bool verboseStatistics;
 	bool progressIndicator;
 

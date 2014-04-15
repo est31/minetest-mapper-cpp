@@ -76,7 +76,7 @@ static inline int readBlockContent(const unsigned char *mapData, int version, in
 }
 
 TileGenerator::TileGenerator():
-	verboseCoordinates(false),
+	verboseCoordinates(0),
 	verboseStatistics(false),
 	progressIndicator(false),
 	m_bgColor(255, 255, 255),
@@ -387,30 +387,57 @@ void TileGenerator::openDb(const std::string &input)
 
 void TileGenerator::loadBlocks()
 {
+	#define MESSAGE_WIDTH 25
 	int mapXMin, mapXMax;
 	int mapYMin, mapYMax;
 	int mapZMin, mapZMax;
 	int geomYMin, geomYMax;
 	long long world_blocks;
 	long long map_blocks;
-	if (verboseCoordinates) {
+	if (verboseCoordinates >= 2) {
 		bool partialBlocks = (m_mapXStartNodeOffset || m_mapXEndNodeOffset || m_mapYStartNodeOffset || m_mapYEndNodeOffset);
 		if (partialBlocks) {
-			cout << (m_blockGeometry ? "Command-line Geometry:  " : "Requested Geometry:     ")
-				<< m_reqXMin*16+m_mapXStartNodeOffset << "," << m_reqYMin*16+m_reqYMinNode << "," << m_reqZMin*16-m_mapYEndNodeOffset << ".."
-				<< m_reqXMax*16+15+m_mapXEndNodeOffset << "," << m_reqYMax*16+m_reqYMaxNode << "," << m_reqZMax*16+15-m_mapYStartNodeOffset
+			cout
+				<< std::setw(MESSAGE_WIDTH) << std::left
+				<< (m_blockGeometry ? "Command-line Geometry:" : "Requested Geometry:")
+				<< std::right
+				<< std::setw(7) << m_reqXMin*16+m_mapXStartNodeOffset << ","
+				<< std::setw(7) << m_reqYMin*16+m_reqYMinNode << ","
+				<< std::setw(7) << m_reqZMin*16-m_mapYEndNodeOffset
+				<< "  ..  "
+				<< std::setw(7) << m_reqXMax*16+15+m_mapXEndNodeOffset << ","
+				<< std::setw(7) << m_reqYMax*16+m_reqYMaxNode << ","
+				<< std::setw(7) << m_reqZMax*16+15-m_mapYStartNodeOffset
 				<< "    ("
-				<< m_reqXMin << "," << m_reqYMin << "," << m_reqZMin << ".."
-				<< m_reqXMax << "," << m_reqYMax << "," << m_reqZMax
+				<< std::setw(6) << m_reqXMin << ","
+				<< std::setw(6) << m_reqYMin << ","
+				<< std::setw(6) << m_reqZMin
+				<< "  ..  "
+				<< std::setw(6) << m_reqXMax << ","
+				<< std::setw(6) << m_reqYMax << ","
+				<< std::setw(6) << m_reqZMax
 				<< ")\n";
 		}
 		if (partialBlocks || m_blockGeometry) {
-			cout << (m_blockGeometry ? "Requested Geometry:     " : "Block-aligned Geometry: ")
-				<< m_reqXMin*16 << "," << m_reqYMin*16+m_reqYMinNode << "," << m_reqZMin*16 << ".."
-				<< m_reqXMax*16+15 << "," << m_reqYMax*16+m_reqYMaxNode << "," << m_reqZMax*16+15
+			cout
+				<< std::setw(MESSAGE_WIDTH) << std::left
+				<< (m_blockGeometry ? "Requested Geometry:" : "Block-aligned Geometry:")
+				<< std::right
+				<< std::setw(7) << m_reqXMin*16 << ","
+				<< std::setw(7) << m_reqYMin*16+m_reqYMinNode << ","
+				<< std::setw(7) << m_reqZMin*16 <<
+				"  ..  "
+				<< std::setw(7) << m_reqXMax*16+15 << ","
+				<< std::setw(7) << m_reqYMax*16+m_reqYMaxNode << ","
+				<< std::setw(7) << m_reqZMax*16+15
 				<< "    ("
-				<< m_reqXMin << "," << m_reqYMin << "," << m_reqZMin << ".."
-				<< m_reqXMax << "," << m_reqYMax << "," << m_reqZMax
+				<< std::setw(6) << m_reqXMin << ","
+				<< std::setw(6) << m_reqYMin << ","
+				<< std::setw(6) << m_reqZMin
+				<< "  ..  "
+				<< std::setw(6) << m_reqXMax << ","
+				<< std::setw(6) << m_reqYMax << ","
+				<< std::setw(6) << m_reqZMax
 				<< ")\n";
 		}
 	}
@@ -485,14 +512,27 @@ void TileGenerator::loadBlocks()
 		}
 		m_positions.push_back(pos);
 	}
-	if (verboseCoordinates) {
-		cout << "World Geometry:         "
-			<< mapXMin*16 << "," << mapYMin*16 << "," << mapZMin*16 << ".."
-			<< mapXMax*16+15 << "," << mapYMax*16+15 << "," << mapZMax*16+15
+	if (verboseCoordinates >= 1) {
+		cout
+			<< std::setw(MESSAGE_WIDTH) << std::left
+			<< "World Geometry:" << std::right
+			<< std::setw(7) << mapXMin*16 << ","
+			<< std::setw(7) << mapYMin*16 << ","
+			<< std::setw(7) << mapZMin*16
+			<< "  ..  "
+			<< std::setw(7) << mapXMax*16+15 << ","
+			<< std::setw(7) << mapYMax*16+15 << ","
+			<< std::setw(7) << mapZMax*16+15
 			<< "    ("
-			<< mapXMin << "," << mapYMin << "," << mapZMin << ".."
-			<< mapXMax << "," << mapYMax << "," << mapZMax
-			<< ")    blocks: " << world_blocks << "\n";
+			<< std::setw(6) << mapXMin << ","
+			<< std::setw(6) << mapYMin << ","
+			<< std::setw(6) << mapZMin
+			<< "  ..  "
+			<< std::setw(6) << mapXMax << ","
+			<< std::setw(6) << mapYMax << ","
+			<< std::setw(6) << mapZMax
+			<< ")    blocks: "
+			<< std::setw(10) << world_blocks << "\n";
 	}
 	if (m_shrinkGeometry) {
 		if (m_xMin != m_reqXMin) m_mapXStartNodeOffset = 0;
@@ -501,13 +541,25 @@ void TileGenerator::loadBlocks()
 		if (m_zMax != m_reqZMax) m_mapYStartNodeOffset = 0;
 	}
 	else {
-		if (verboseCoordinates) {
-			cout << "Minimal Map Geometry:   "
-				<< m_xMin*16 << "," << m_yMin*16+m_reqYMinNode << "," << m_zMin*16 << ".."
-				<< m_xMax*16+15 << "," << m_yMax*16+m_reqYMaxNode << "," << m_zMax*16+15
+		if (verboseCoordinates >= 2) {
+			cout
+				<< std::setw(MESSAGE_WIDTH) << std::left
+				<< "Minimal Map Geometry:" << std::right
+				<< std::setw(7) << m_xMin*16 << ","
+				<< std::setw(7) << m_yMin*16+m_reqYMinNode << ","
+				<< std::setw(7) << m_zMin*16
+				<< "  ..  "
+				<< std::setw(7) << m_xMax*16+15 << ","
+				<< std::setw(7) << m_yMax*16+m_reqYMaxNode << ","
+				<< std::setw(7) << m_zMax*16+15
 				<< "    ("
-				<< m_xMin << "," << m_yMin << "," << m_zMin << ".."
-				<< m_xMax << "," << m_yMax << "," << m_zMax
+				<< std::setw(6) << m_xMin << ","
+				<< std::setw(6) << m_yMin << ","
+				<< std::setw(6) << m_zMin
+				<< "  ..  "
+				<< std::setw(6) << m_xMax << ","
+				<< std::setw(6) << m_yMax << ","
+				<< std::setw(6) << m_zMax
 				<< ")\n";
 		}
 		m_xMin = m_reqXMin;
@@ -515,17 +567,51 @@ void TileGenerator::loadBlocks()
 		m_zMin = m_reqZMin;
 		m_zMax = m_reqZMax;
 	}
-	if (verboseCoordinates) {
-		cout << "Map Vertical Limits:    x," << geomYMin*16 << ",z..x," << geomYMax*16+15 << ",z    (x," <<   geomYMin << ",z..x," <<   geomYMax << ",z)\n";
-		cout << "Map Output Geometry:    "
-			<< m_xMin*16+m_mapXStartNodeOffset << "," << m_yMin*16+m_reqYMinNode << "," << m_zMin*16-m_mapYEndNodeOffset << ".."
-			<< m_xMax*16+15+m_mapXEndNodeOffset << "," << m_yMax*16+m_reqYMaxNode << "," << m_zMax*16+15-m_mapYStartNodeOffset
+	if (verboseCoordinates >= 2) {
+		cout
+			<< std::setw(MESSAGE_WIDTH) << std::left
+			<< "Map Vertical Limits:" << std::right
+			<< std::setw(7) << "x" << ","
+			<< std::setw(7) << geomYMin*16 << ","
+			<< std::setw(7) << "z"
+			<< "  ..  "
+			<< std::setw(7) << "x" << ","
+			<< std::setw(7) << geomYMax*16+15 << ","
+			<< std::setw(7) << "z"
 			<< "    ("
-			<< m_xMin << "," << m_yMin << "," << m_zMin << ".."
-			<< m_xMax << "," << m_yMax << "," << m_zMax
-			<< ")    blocks: " << map_blocks << "\n";
+			<< std::setw(6) << "x" << ","
+			<< std::setw(6) << geomYMin << ","
+			<< std::setw(6) << "z"
+			<< "  ..  "
+			<< std::setw(6) << "x" << ","
+			<< std::setw(6) << geomYMax << ","
+			<< std::setw(6) << "z"
+			<< ")\n";
+	}
+	if (verboseCoordinates >= 1) {
+		cout
+			<< std::setw(MESSAGE_WIDTH) << std::left
+			<< "Map Output Geometry:" << std::right
+			<< std::setw(7) << m_xMin*16+m_mapXStartNodeOffset << ","
+			<< std::setw(7) << m_yMin*16+m_reqYMinNode << ","
+			<< std::setw(7) << m_zMin*16-m_mapYEndNodeOffset
+			<< "  ..  "
+			<< std::setw(7) << m_xMax*16+15+m_mapXEndNodeOffset << ","
+			<< std::setw(7) << m_yMax*16+m_reqYMaxNode << ","
+			<< std::setw(7) << m_zMax*16+15-m_mapYStartNodeOffset
+			<< "    ("
+			<< std::setw(6) << m_xMin << ","
+			<< std::setw(6) << m_yMin << ","
+			<< std::setw(6) << m_zMin
+			<< "  ..  "
+			<< std::setw(6) << m_xMax << ","
+			<< std::setw(6) << m_yMax << ","
+			<< std::setw(6) << m_zMax
+			<< ")    blocks: "
+			<< std::setw(10) << map_blocks << "\n";
 	}
 	m_positions.sort();
+	#undef MESSAGE_WIDTH
 }
 
 inline BlockPos TileGenerator::decodeBlockPos(int64_t blockId) const

@@ -46,7 +46,7 @@ void usage()
 			"  --sqlite-cacheworldrow\n"
 			"  --tiles <tilesize>[+<border>]\n"
 			"  --tileorigin <x>,<y>|center-world|center-map\n"
-			"  --verbose\n"
+			"  --verbose[=n]\n"
 			"  --progress\n"
 			"Color format: '#000000'\n"
 			"Geometry formats:\n"
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 		{"tiles", required_argument, 0, 't'},
 		{"tileorigin", required_argument, 0, 'T'},
 		{"tilebordercolor", required_argument, 0, 'B'},
-		{"verbose", no_argument, 0, 'v'},
+		{"verbose", optional_argument, 0, 'v'},
 		{"progress", no_argument, 0, OPT_PROGRESS_INDICATOR},
 	};
 
@@ -146,8 +146,12 @@ int main(int argc, char *argv[])
 					generator.setDrawScale(true);
 					break;
 				case 'v':
-					generator.verboseCoordinates = true;
 					generator.verboseStatistics = true;
+					generator.verboseCoordinates = 1;
+					if (optarg) {
+						if (optarg[0] >= '2')
+							generator.verboseCoordinates = 2;
+					}
 					break;
 				case 'e':
 					generator.setDrawAlpha(true);
