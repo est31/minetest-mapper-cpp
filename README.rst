@@ -104,7 +104,11 @@ backend:
     Use specific map backend, supported: sqlite3, leveldb, `--backend leveldb`
 
 geometry <geometry>:
+    (see below, under 'centergeometry')
+
 cornergeometry  <geometry>:
+    (see below, under 'centergeometry')
+
 centergeometry  <geometry>:
     Limit the part of the world that is included in the map.
 
