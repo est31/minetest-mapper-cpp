@@ -118,6 +118,22 @@ private:
 	BlockPos decodeBlockPos(int64_t blockId) const;
 	void createImage();
 	void computeMapParameters();
+	void computeTileParameters(
+                // Input parameters
+                int minPos,
+                int maxPos,
+                int mapStartNodeOffset,
+                int mapEndNodeOffset,
+                int tileOrigin,
+                int tileSize,
+                // Input / Output parameters
+                int &pictSize,
+                // Output parameters
+                int &tileBorderCount,
+                int &tileMapOffset,
+                int &tileMapExcess,
+                // Behavior selection
+                bool ascending);
 	void renderMap();
 	std::list<int> getZValueList() const;
 	Block getBlockOnPos(BlockPos pos);

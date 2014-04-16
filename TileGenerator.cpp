@@ -651,6 +651,60 @@ void TileGenerator::pushPixelRows(int zPosLimit) {
 	}
 }
 
+void TileGenerator::computeTileParameters(
+		// Input parameters
+		int minPos,
+		int maxPos,
+		int mapStartNodeOffset,
+		int mapEndNodeOffset,
+		int tileOrigin,
+		int tileSize,
+		// Input / Output parameters
+		int &pictSize,
+		// Output parameters
+		int &tileBorderCount,
+		int &tileMapStartOffset,
+		int &tileMapEndOffset,
+		// Behavior selection
+		bool ascending)
+{
+	int start = minPos * 16 + mapStartNodeOffset - tileOrigin;
+	int limit = (maxPos+1) * 16 + mapEndNodeOffset - tileOrigin;
+	int shift;
+	// shift values, so that start = 0..tileSize-1
+	// (effect of tileOrigin is identical to (tileOrigin + tileSize)
+	//  so any multiple of tileSize can be safely added)
+	if (start<0)
+		shift = - (start + 1) / tileSize + 1;
+	else
+		shift = - start / tileSize;
+	start += shift * tileSize;
+	limit += shift * tileSize;
+
+	int tileBorderStart = 0;	// First border to draw
+	int tileBorderLimit = 0;	// Last + 1 border to draw
+	if (ascending) {
+		// Prefer tile borders towards negative infinity
+		// 0 -> 0
+		// 1..tileSize -> 1
+		// (tileSize+1)..(2*tileSize) -> 2
+		// etc.
+		tileBorderStart = (start + tileSize - 1) / tileSize;
+		tileBorderLimit = (limit + tileSize - 1) / tileSize;
+	} else {
+		// Prefer tile borders towards positive infinity
+		// 0..(tileSize-1) -> 1
+		// tileSize..(2*tileSize-1) -> 2
+		// etc.
+		tileBorderStart = start / tileSize + 1;
+		tileBorderLimit = limit / tileSize + 1;
+	}
+	tileMapStartOffset = (tileSize - start) % tileSize;
+	tileMapEndOffset = limit - ((tileBorderLimit-tileBorderStart) * tileSize);
+	pictSize += (tileBorderLimit - tileBorderStart) * m_tileBorderSize;
+	tileBorderCount = tileBorderLimit - tileBorderStart;
+}
+
 void TileGenerator::computeMapParameters()
 {
 	m_storedWidth = (m_xMax - m_xMin + 1) * 16;
@@ -678,56 +732,45 @@ void TileGenerator::computeMapParameters()
 	// Compute adjustments for tiles.
 	m_pictWidth = mapWidth;
 	m_pictHeight = mapHeight;
-	int tileBorderXStart = 0;
-	int tileBorderXLimit = 0;
-	int tileBorderZStart = 0;
-	int tileBorderZLimit = 0;
 	if (m_tileWidth && m_tileBorderSize) {
-		int xStart = m_xMin * 16 + m_mapXStartNodeOffset - m_tileXOrigin;
-		int xLimit = (m_xMax+1) * 16 + m_mapXEndNodeOffset - m_tileXOrigin;
-		int shift;
-		// shift values, so that xStart = 0..m_tileWidth-1
-		// (effect of m_tileXOrigin is identical to (m_tileXOrigin + m_tileWidth)
-		//  so any multiple of m_tileWidth can be safely added)
-		if (xStart<0)
-			shift = - (xStart + 1) / m_tileWidth + 1;
-		else
-			shift = - xStart / m_tileWidth;
-		xStart += shift * m_tileWidth;
-		xLimit += shift * m_tileWidth;
-
-		// 0 -> 0
-		// 1..m_tileWidth -> 1
-		// (m_tileWidth+1)..(2*m_tileWidth) -> 2
-		// etc.
-		tileBorderXStart = (xStart + m_tileWidth - 1) / m_tileWidth;
-		tileBorderXLimit = (xLimit + m_tileWidth - 1) / m_tileWidth;
-		m_tileMapXOffset = (m_tileWidth - xStart) % m_tileWidth;
-		m_pictWidth += (tileBorderXLimit - tileBorderXStart) * m_tileBorderSize;
+		int tileMapXEndOffset;		// Dummy
+		TileGenerator::computeTileParameters(
+				// Input parameters
+				m_xMin,
+				m_xMax,
+				m_mapXStartNodeOffset,
+				m_mapXEndNodeOffset,
+				m_tileXOrigin,
+				m_tileWidth,
+				// Input / Output parameters
+				m_pictWidth,
+				// Output parameters
+				m_tileBorderXCount,
+				m_tileMapXOffset,
+				tileMapXEndOffset,
+				// Behavior selection
+				true);
 	}
 	if (m_tileHeight && m_tileBorderSize) {
-		int zStart = m_zMin * 16 - m_mapYEndNodeOffset - m_tileZOrigin;
-		int zLimit = (m_zMax+1) * 16 - m_mapYStartNodeOffset - m_tileZOrigin;
-		int shift;
-		// shift values so that zStart = 0..m_tileHeight-1
-		if (zStart<0)
-			shift = - (zStart + 1) / m_tileHeight + 1;
-		else
-			shift = - zStart / m_tileHeight;
-		zStart += shift * m_tileHeight;
-		zLimit += shift * m_tileHeight;
-
-		// 0..(m_tileWidth-1) -> 1
-		// m_tileWidth..(2*m_tileWidth-1) -> 2
-		// etc.
-		tileBorderZStart = zStart / m_tileHeight + 1;
-		tileBorderZLimit = zLimit / m_tileHeight + 1;
-		m_tileMapYOffset = zLimit - ((tileBorderZLimit-tileBorderZStart) * m_tileHeight);
-		m_pictHeight += (tileBorderZLimit - tileBorderZStart) * m_tileBorderSize;
+		int tileMapYEndOffset;		// Dummy
+		TileGenerator::computeTileParameters(
+				// Input parameters
+				m_zMin,
+				m_zMax,
+				m_mapYEndNodeOffset,
+				m_mapYStartNodeOffset,
+				m_tileZOrigin,
+				m_tileHeight,
+				// Input / Output parameters
+				m_pictHeight,
+				// Output parameters
+				m_tileBorderYCount,
+				tileMapYEndOffset,
+				m_tileMapYOffset,
+				// Behavior selection
+				false);
 	}
 
-	m_tileBorderXCount = tileBorderXLimit - tileBorderXStart;
-	m_tileBorderYCount = tileBorderZLimit - tileBorderZStart;
 	m_nextStoredYCoord = m_mapYStartNodeOffset;
 
 	// Print some useful messages in cases where it may not be possible to generate the image...
