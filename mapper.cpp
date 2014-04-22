@@ -24,6 +24,7 @@ using namespace std;
 void usage()
 {
 	const char *usage_text = "minetestmapper [options]\n"
+			"  -h/--help\n"
 			"  -i/--input <world_path>\n"
 			"  -o/--output <output_image.png>\n"
 			"  --colors <file>\n"
@@ -102,6 +103,7 @@ int main(int argc, char *argv[])
 			c = getopt_long(argc, argv, "hi:o:", long_options, &option_index);
 			if (c == -1) {
 				if (input.empty() || output.empty()) {
+					std::cerr << "Input (world directory) or output (PNG filename) missing" << std::endl;
 					usage();
 					return 0;
 				}
@@ -188,6 +190,7 @@ int main(int argc, char *argv[])
 						char c;
 						tilesize >> size;
 						if (tilesize.fail() || size<0) {
+							std::cerr << "Invalid tile size specification (" << optarg << ")" << std::endl;
 							usage();
 							exit(1);
 						}
@@ -195,6 +198,7 @@ int main(int argc, char *argv[])
 						tilesize >> c >> border;
 						if (!tilesize.fail()) {
 							if (c != '+' || border < 1) {
+								std::cerr << "Invalid tile border size specification (" << optarg << ")" << std::endl;
 								usage();
 								exit(1);
 							}
@@ -214,6 +218,7 @@ int main(int argc, char *argv[])
 							else if (string("center-map") == optarg)
 								generator.setTileOrigin(TILECENTER_IS_MAPCENTER, TILECENTER_IS_MAPCENTER);
 							else {
+								std::cerr << "Invalid tile origin specification (" << optarg << ")" << std::endl;
 								usage();
 								exit(1);
 							}
