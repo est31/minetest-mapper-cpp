@@ -396,7 +396,7 @@ void TileGenerator::loadBlocks()
 	long long map_blocks;
 	if (verboseCoordinates >= 2) {
 		bool partialBlocks = (m_mapXStartNodeOffset || m_mapXEndNodeOffset || m_mapYStartNodeOffset || m_mapYEndNodeOffset);
-		if (partialBlocks) {
+		if (partialBlocks || !m_blockGeometry) {
 			cout
 				<< std::setw(MESSAGE_WIDTH) << std::left
 				<< (m_blockGeometry ? "Command-line Geometry:" : "Requested Geometry:")
