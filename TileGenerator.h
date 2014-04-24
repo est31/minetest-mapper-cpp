@@ -66,7 +66,7 @@ public:
 	void setDrawScale(bool drawScale);
 	void setDrawAlpha(bool drawAlpha);
 	void setShading(bool shading);
-	void setGeometry(int x, int y, int w, int h);
+	void setGeometry(const NodeCoord &corner1, const NodeCoord &corner2);
 	void setMinY(int y);
 	void setMaxY(int y);
 	void setShrinkGeometry(bool shrink);

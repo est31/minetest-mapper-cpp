@@ -24,6 +24,27 @@ using namespace std;
 #define OPT_SQLITE_CACHEWORLDROW	0x81
 #define OPT_PROGRESS_INDICATOR		0x82
 
+class FuzzyBool {
+private:
+	int m_value;
+	FuzzyBool(int i) : m_value(i) {}
+public:
+	FuzzyBool() : m_value(0) {}
+	FuzzyBool(bool b) : m_value(b ? Yes.m_value : No.m_value) {}
+	static const FuzzyBool Yes;
+	static const FuzzyBool Maybe;
+	static const FuzzyBool No;
+inline friend bool operator==(FuzzyBool f1, FuzzyBool f2) { return f1.m_value == f2.m_value; }
+inline friend bool operator!=(FuzzyBool f1, FuzzyBool f2) { return f1.m_value != f2.m_value; }
+inline friend bool operator>=(FuzzyBool f1, FuzzyBool f2) { return f1.m_value >= f2.m_value; }
+inline friend bool operator<=(FuzzyBool f1, FuzzyBool f2) { return f1.m_value <= f2.m_value; }
+inline friend bool operator<(FuzzyBool f1, FuzzyBool f2) { return f1.m_value < f2.m_value; }
+inline friend bool operator>(FuzzyBool f1, FuzzyBool f2) { return f1.m_value < f2.m_value; }
+};
+const FuzzyBool FuzzyBool::Yes = 1;
+const FuzzyBool FuzzyBool::Maybe = 0;
+const FuzzyBool FuzzyBool::No = -1;
+
 void usage()
 {
 	const char *usage_text = "minetestmapper [options]\n"
@@ -45,9 +66,14 @@ void usage()
 			"  --max-y <y>\n"
 			"  --backend <" USAGE_DATABASES ">\n"
 			"  --geometry <geometry>\n"
+			"\t(Warning: has a compatibility mode - see README.rst)\n"
 			"  --cornergeometry <geometry>\n"
 			"  --centergeometry <geometry>\n"
 			"  --geometrymode pixel,block,fixed,shrink\n"
+			"\tpixel:   interpret geometry as pixel-accurate\n"
+			"\tblock:   round geometry away from zero, to entire map blocks (16 nodes)\n"
+			"\tfixed:   generate a map of exactly the requested geometry\n"
+			"\tshrink:  generate a smaller map if possible\n"
 #if USE_SQLITE3
 			"  --sqlite-cacheworldrow\n"
 #endif
@@ -59,8 +85,17 @@ void usage()
 			"\t'#000' or '#000000'                                  (RGB)\n"
 			"\t'#0000' or '#0000000'                                (ARGB - usable if an alpha value is allowed)\n"
 			"Geometry formats:\n"
-			"\t<width>x<heigth>[+|-<xoffset>+|-<yoffset>]\n"
-			"\t<xoffset>:<yoffset>+<width>+<height>\n";
+			"\t<width>x<heigth>[+|-<xoffset>+|-<yoffset>]           (dimensions and corner)\n"
+			"\t<xoffset>,<yoffset>+<width>+<height>                 (corner and dimensions)\n"
+			"\t<xcenter>,<ycenter>:<width>x<height>                 (center and dimensions)\n"
+			"\t<xcorner1>,<ycorner1>:<xcorner2>,<ycorner2>          (corners of area)\n"
+			"\tOriginal/legacy format - see note under '--geometry' option:\n"
+			"\t<xoffset>:<yoffset>+<width>+<height>                 (corner and dimensions)\n"
+			"X and Y coordinate formats:\n"
+			"\t[+-]<n>                                              (node +/- <n>)\n"
+			"\t[+-]<b>#[<n>]                                        (node <n> in block +/- <b>)\n"
+			"\t[+-]<b>.[<n>]                                        (node +/- (b * 16 + n))\n"
+			;
 	std::cout << usage_text;
 }
 
@@ -123,6 +158,313 @@ void parseColorsFile(TileGenerator &generator, const string &input, string color
 			}
 		}
 	}
+}
+
+// is: stream to read from
+// coord: set to coordinate value that was read
+// isBlockCoord: set to true if the coordinate read was a block coordinate
+// wildcard: if non-zero, accept '*' as a coordinate, and return this value instead.
+//	(suggested values for 'wildcard': INT_MIN or INT_MAX)
+//
+// Accepted coordinate syntax:
+// 	[+-]<n>:	node coordinate:  node +/- n
+// 	[+-]<b>#:	block coordinate: block +/- b	(isBlockCoord will be set to true)
+// 	[+-]<b>#<n>:	node coordinate:  node <n> in block +/- <b>
+// 	[+-]<b>.<n>:	node coordinate:  node +/- (b * 16 + n)
+// As a special feature, double signs are also supported. E.g.:
+//	+-3
+// Which allows shell command-lines like the following
+//	${width}x${height}+$xoffs+$yoffs
+// (which otherwise require special measures to cope with xoffs or yoffs being negative...)
+// Other uses of this feature are left as an excercise to the reader.
+// Hint: --3.5 is *not* the same as 3.5
+static bool parseNodeCoordinate(istream &is, int &coord, bool &isBlockCoord, int wildcard)
+{
+	char c;
+	int i;
+	char s;
+
+	s = c = is.peek();
+	if (c == '*') {
+		if (wildcard) {
+			i = wildcard;
+			is.ignore(1);
+		}
+		else {
+			is >> coord;	// Set stream status to failed
+		}
+	}
+	else {
+		wildcard = 0;		// not processing a wildcard now
+		if (s == '-' || s == '+')
+			is.ignore(1);
+		else
+			s = '+';
+		is >> i;
+		if (s == '-')
+			i = -i;
+	}
+	if (is.fail())
+		return false;
+	coord = i;
+	isBlockCoord = false;
+	if (is.eof())
+		return true;
+
+	// Check if this is a block number, and so: if it has a node number.
+	c = is.peek();
+	if (c == '#' || c == '.') {
+		// coordinate read was a block number
+		is.ignore(1);
+		if (wildcard) {
+			return false;	// wildcards are generic
+		}
+		else if (isdigit(is.peek())) {
+			// has a node number / offset
+			is >> i;
+			if (!is.fail()) {
+				if (c == '.' && s == '-') {
+					// Using '.', the node number has same sign as block number
+					// Using '#', the node number is always positive
+					// i.e. -1#1 is: node #1 in block -1 (i.e. node -16 + 1 = -15)
+					// i.e. -1.1 is: 1 block and 1 node in negative direction (i.e. node 16 - 1 = -17)
+					i = -i;
+				}
+				coord = coord * 16 + i;
+			}
+		}
+		else {
+			// No node number / offset
+			isBlockCoord = true;
+		}
+	}
+	return (!is.fail());
+}
+
+static bool parseCoordinates(istream &is, NodeCoord &coord, int n, int wildcard = 0, char separator = ',')
+{
+	bool result;
+	result = true;
+	NodeCoord tempCoord;
+	for (int i = 0; result && i < n; i++) {
+		if (i && separator) {
+			char c;
+			is >> c;
+			if (c != separator) {
+				result = false;
+				break;
+			}
+		}
+		result = parseNodeCoordinate(is, tempCoord.dimension[i], tempCoord.isBlock[i], wildcard);
+	}
+	if (result)
+		coord = tempCoord;
+	return result;
+}
+
+static void convertBlockToNodeCoordinates(NodeCoord &coord, int offset, int n)
+{
+	for (int i = 0; i < n; i++) {
+		if (coord.isBlock[i]) {
+			coord.dimension[i] = coord.dimension[i] * 16 + offset;
+			coord.isBlock[i] = false;
+		}
+	}
+}
+
+static void convertBlockToNodeCoordinates(NodeCoord &coord1, NodeCoord &coord2, int n)
+{
+	for (int i = 0; i < n; i++) {
+		int c1 = coord1.isBlock[i] ? coord1.dimension[i] * 16 : coord1.dimension[i];
+		int c2 = coord2.isBlock[i] ? coord2.dimension[i] * 16 + 15 : coord2.dimension[i];
+		if (c1 > c2) {
+		    c1 = coord1.isBlock[i] ? coord1.dimension[i] * 16 + 15 : coord1.dimension[i];
+		    c2 = coord2.isBlock[i] ? coord2.dimension[i] * 16 : coord2.dimension[i];
+		}
+		coord1.dimension[i] = c1;
+		coord2.dimension[i] = c2;
+		coord1.isBlock[i] = false;
+		coord2.isBlock[i] = false;
+	}
+}
+
+static void convertCenterToCornerCoordinates(NodeCoord &coord, NodeCoord &dimensions, int n)
+{
+	// This results in a slight bias to the negative side.
+	// i.e.: 0,0:2x2 will be -1,-1 .. 0,0 and not 0,0 .. 1,1
+	// The advantage is that e.g. 0#,0#:16x16 selects the 16x16 area that is block 0:
+	// 	0#,0#:16x16 -> 0,0:15,15
+	// With a bias to the positive side, that would be:
+	// 	0#,0#:16x16 -> 1,1:16,16
+	// Which is counter-intuitive by itself (IMHO :-)
+	for (int i = 0; i < n; i++) {
+		if (dimensions.dimension[i] < 0)
+			coord.dimension[i] += -dimensions.dimension[i] / 2;
+		else
+			coord.dimension[i] -= dimensions.dimension[i] / 2;
+	}
+}
+
+static void convertDimensionToCornerCoordinates(NodeCoord &coord1, NodeCoord &coord2, NodeCoord &dimensions, int n)
+{
+	for (int i = 0; i < n; i++) {
+		if (dimensions.dimension[i] < 0)
+			coord2.dimension[i] = coord1.dimension[i] + dimensions.dimension[i] + 1;
+		else
+			coord2.dimension[i] = coord1.dimension[i] + dimensions.dimension[i] - 1;
+	}
+}
+
+static void orderCoordinateDimensions(NodeCoord &coord1, NodeCoord &coord2, int n)
+{
+	for (int i = 0; i < n; i++)
+		if (coord1.dimension[i] > coord2.dimension[i]) {
+			int temp = coord1.dimension[i];
+			coord1.dimension[i] = coord2.dimension[i];
+			coord2.dimension[i] = temp;
+		}
+}
+
+
+// Parse the following geometry formats:
+// <w>x<h>[+<x>+<y>]
+//	(dimensions, and position)
+//	(if x and y are omitted, they default to -w/2 and -h/2)
+// <x1>,<y1>:<x2>,<y2>
+//	(2 corners of the area)
+// <x>,<y>:<w>x<h>
+//	(center of the area, and dimensions)
+// <x>[,:]<y>+<w>+<h>
+//	(corner of the area, and dimensions)
+static bool parseGeometry(istream &is, NodeCoord &coord1, NodeCoord &coord2, NodeCoord &dimensions, bool &legacy, bool &centered, int n, FuzzyBool expectDimensions, int wildcard = 0)
+{
+	int pos;
+	pos = is.tellg();
+	legacy = false;
+
+	for (int i = 0; i < n; i++) {
+		coord1.dimension[i] = NodeCoord::Invalid;
+		coord2.dimension[i] = NodeCoord::Invalid;
+		dimensions.dimension[i] = NodeCoord::Invalid;
+	}
+
+	if (expectDimensions >= FuzzyBool::Maybe && parseCoordinates(is, dimensions, n, 0, 'x')) {
+		convertBlockToNodeCoordinates(dimensions, 0, n);
+		// <w>x<h>[+<x>+<y>]
+		if (is.eof()) {
+			centered = true;
+			for (int i = 0; i < n; i++) {
+				coord1.dimension[i] = 0;
+				coord1.isBlock[i] = false;
+			}
+			return (is.eof() || is.peek() == ' ' || is.peek() == '\t');
+		}
+		else {
+			centered = false;
+			if (parseCoordinates(is, coord1, n, 0, '\0')) {
+				convertBlockToNodeCoordinates(coord1, 0, n);
+				return (is.eof() || is.peek() == ' ' || is.peek() == '\t');
+			}
+			else
+				return false;
+		}
+	}
+
+	is.clear();
+	is.seekg(pos);
+	if (wildcard) {
+		coord1.x = coord1.y = coord1.z = 0;
+	}
+	if (parseCoordinates(is, coord1, n, wildcard, ',')) {
+		if (expectDimensions == FuzzyBool::No || (expectDimensions == FuzzyBool::Maybe && (is.eof() || is.peek() == ' ' || is.peek() == '\t'))) {
+			// Just coordinates were specified
+			centered = false;
+			return (is.eof() || is.peek() == ' ' || is.peek() == '\t');
+		}
+		else if (wildcard && (coord1.x == wildcard || coord1.y == wildcard || coord1.z == wildcard)) {
+			// wildcards are only allowed for plain coordinates (i.e. no dimensions)
+			return false;
+		}
+		else if (is.peek() == ':') {
+			is.ignore(1);
+			pos = is.tellg();
+			if (parseCoordinates(is, coord2, n, 0, ',')) {
+				// <x1>,<y1>:<x2>,<y2>
+				centered = false;
+				convertBlockToNodeCoordinates(coord1, coord2, n);
+				return (is.eof() || is.peek() == ' ' || is.peek() == '\t');
+			}
+			is.clear();
+			is.seekg(pos);
+			if (parseCoordinates(is, dimensions, n, 0, 'x')) {
+				// <x>,<y>:<w>x<h>
+				// (x,y is the center of the area by default)
+				centered = true;
+				convertBlockToNodeCoordinates(coord1, 8, n);
+				convertBlockToNodeCoordinates(dimensions, 0, n);
+				return (is.eof() || is.peek() == ' ' || is.peek() == '\t');
+			}
+			else {
+				return false;
+			}
+		}
+		else {
+			// <x>,<y>+<w>+<h>
+			centered = false;
+			if (parseCoordinates(is, dimensions, n, 0, '\0')) {
+				convertBlockToNodeCoordinates(coord1, 0, n);
+				convertBlockToNodeCoordinates(dimensions, 0, n);
+				return (is.eof() || is.peek() == ' ' || is.peek() == '\t');
+			}
+			else {
+				return false;
+			}
+		}
+	}
+
+	is.clear();
+	is.seekg(pos);
+	if (parseCoordinates(is, coord1, n, 0, ':')) {
+		// <x>:<y>+<w>+<h>
+		legacy = true;
+		centered = false;
+		if (parseCoordinates(is, dimensions, n, 0, '\0')) {
+			convertBlockToNodeCoordinates(coord1, 0, n);
+			convertBlockToNodeCoordinates(dimensions, 0, n);
+			return (is.eof() || is.peek() == ' ' || is.peek() == '\t');
+		}
+		return false;
+	}
+
+	return false;
+}
+
+static bool parseMapGeometry(istream &is, NodeCoord &coord1, NodeCoord &coord2, bool &legacy, FuzzyBool interpretAsCenter)
+{
+	NodeCoord dimensions;
+	bool centered;
+
+	bool result = parseGeometry(is, coord1, coord2, dimensions, legacy, centered, 2, FuzzyBool::Yes);
+
+	if (result) {
+		bool haveCoord2 = coord2.dimension[0] != NodeCoord::Invalid
+			&& coord2.dimension[1] != NodeCoord::Invalid;
+		bool haveDimensions = dimensions.dimension[0] != NodeCoord::Invalid
+			&& dimensions.dimension[1] != NodeCoord::Invalid;
+		if (!haveCoord2 && haveDimensions) {
+			// Convert coord1 + dimensions to coord1 + coord2.
+			// First, if coord1 must be interpreted as center of the area, adjust it to be a corner
+			if ((centered && interpretAsCenter == FuzzyBool::Maybe) || interpretAsCenter == FuzzyBool::Yes)
+				convertCenterToCornerCoordinates(coord1, dimensions, 2);
+			convertDimensionToCornerCoordinates(coord1, coord2, dimensions, 2);
+		}
+		else if (!haveCoord2 || haveDimensions) {
+			return false;
+		}
+		orderCoordinateDimensions(coord1, coord2, 2);
+	}
+
+	return result;
 }
 
 int main(int argc, char *argv[])
@@ -284,10 +626,16 @@ int main(int argc, char *argv[])
 				case 'T': {
 						istringstream origin;
 						origin.str(optarg);
-						int x, y;
-						char c;
-						origin >> x >> c >> y;
-						if (origin.fail() || (c != ':' && c != ',')) {
+						NodeCoord coord;
+						if (parseCoordinates(origin, coord, 2, 0, ',')) {
+							convertBlockToNodeCoordinates(coord, 8, 2);
+							generator.setTileOrigin(coord.x, coord.y);
+						}
+						else if (origin.str(optarg), parseCoordinates(origin, coord, 2, 0, ':')) {
+							convertBlockToNodeCoordinates(coord, 8, 2);
+							generator.setTileOrigin(coord.x, coord.y);
+						}
+						else {
 							if (string("center-world") == optarg)
 								generator.setTileOrigin(TILECENTER_IS_WORLDCENTER, TILECENTER_IS_WORLDCENTER);
 							else if (string("center-map") == optarg)
@@ -297,9 +645,6 @@ int main(int argc, char *argv[])
 								usage();
 								exit(1);
 							}
-						}
-						else {
-							generator.setTileOrigin(x, y);
 						}
 					}
 					break;
@@ -349,9 +694,24 @@ int main(int argc, char *argv[])
 					foundGeometrySpec = true;
 					break;
 				case 'g': {
+						istringstream iss;
+						iss.str(optarg);
+						NodeCoord coord1;
+						NodeCoord coord2;
+						bool legacy;
+						FuzzyBool center = FuzzyBool::Maybe;
+						if (long_options[option_index].name[0] == 'c' && long_options[option_index].name[1] == 'e')
+							center = FuzzyBool::Yes;
+						if (long_options[option_index].name[0] == 'c' && long_options[option_index].name[1] == 'o')
+							center = FuzzyBool::No;
+						if (!parseMapGeometry(iss, coord1, coord2, legacy, center)) {
+							std::cerr << "Invalid geometry specification '" << optarg << "'" << std::endl;
+							usage();
+							exit(1);
+						}
 						// Set defaults
 						if (!foundGeometrySpec) {
-							if (long_options[option_index].name[0] == 'g') {
+							if (long_options[option_index].name[0] == 'g' && legacy) {
 								// Compatibility when using the option 'geometry'
 								generator.setBlockGeometry(true);
 								generator.setShrinkGeometry(true);
@@ -369,46 +729,7 @@ int main(int argc, char *argv[])
 							generator.setShrinkGeometry(false);
 							setFixedOrShrinkGeometry = true;
 						}
-
-						istringstream iss;
-						iss.str(optarg);
-						int p1, p2, p3, p4;
-						char c;
-						iss >> p1 >> c >> p2;
-						if (!iss.fail() && c == 'x' && iss.eof()) {
-							p3 = -(p1 / 2);
-							p4 = -(p2 / 2);
-						}
-						else {
-							char s3, s4;
-							iss >> s3 >> p3 >> s4 >> p4;
-							// accept +-23 as well (for ease of use)
-							if ((s3 != '+'  && s3 != '-') || (s4 != '+' && s4 != '-'))
-								c = 0;	// Causes an 'invalid geometry' message
-							if (s3 == '-') p3 = -p3;
-							if (s4 == '-') p4 = -p4;
-							if (long_options[option_index].name[0] == 'c'
-								&& long_options[option_index].name[1] == 'e') {
-								// option 'centergeometry'
-								p3 -= p1 / 2;
-								p4 -= p2 / 2;
-							}
-						}
-						if (iss.fail() || (c != ':' && c != 'x')) {
-							std::cerr << "Invalid geometry specification '" << optarg << "'" << std::endl;
-							usage();
-							exit(1);
-						}
-						if ((c == ':' && (p3 < 1 || p4 < 1))
-							|| (c == 'x' && (p1 < 1 || p2 < 1))) {
-							std::cerr << "Invalid geometry (width and/or heigth is zero or negative)" << std::endl;
-							usage();
-							exit(1);
-							}
-						if (c == ':')
-							generator.setGeometry(p1, p2, p3, p4);
-						if (c == 'x')
-							generator.setGeometry(p3, p4, p1, p2);
+						generator.setGeometry(coord1, coord2);
 						foundGeometrySpec = true;
 					}
 					break;

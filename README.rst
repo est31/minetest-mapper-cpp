@@ -127,27 +127,38 @@ backend:
     By default, the backend is 'auto', i.e. it is determined from the backend
     setting in the world's world.mt file (if found).
 
-geometry <geometry>:
-    (see below, under 'centergeometry')
+centergeometry  <geometry>:
+    (see below, under 'geometry')
 
 cornergeometry  <geometry>:
-    (see below, under 'centergeometry')
+    (see below, under 'geometry')
 
-centergeometry  <geometry>:
+geometry <geometry>:
     Limit the part of the world that is included in the map.
 
     <geometry> has one of the formats:
 
-    <width>x<height>[<+|-xoffset><+|-yoffset>]
+    <width>x<height>[<+|-xoffset><+|-yoffset>]	(dimensions & corner)
 
-    <xoffset>:<yoffset>+width+height
+    <xoffset>,<yoffset>+width+height		(corner & dimensions)
 
-    For cornergeometry, the offsets will be at the lower-left
-    corner of the image (offsets increase from left to right,
-    and from bottom to top).
+    <xcenter>,<ycenter>:widthxheight		(center & dimensions)
 
-    For centergeometry, the offsets will be in the center of
-    the image.
+    <xcorner1>,<ycorner1>:<xcorner2>,<ycorner2>
+
+    The old/original format is also supported:
+
+    <xoffset>:<yoffset>+width+height		(corner & dimensions)
+
+    For 'cornergeometry', the offsets ([xy]offset or [xy]center) will
+    be at the lower-left corner of the image (offsets increase from left
+    to right, and from bottom to top).
+
+    For 'centergeometry', the offsets ([xy]offset or [xy]center) will be
+    in the center of the image.
+
+    For plain 'geometry', the offsets will be at the corner, or in
+    the center, depending on the geometry format.
 
     If the offsets are not specified (with the first format),
     the map is centered on the center of the world.
@@ -155,21 +166,26 @@ centergeometry  <geometry>:
     By default, the geometry has pixel granularity, and a map of
     exactly the requested size is generated.
 
-    Only if the *first* geometry option on the command-line is
-    `--geometry`, then for compatibility, the old behavior
-    is default instead (i.e. block granularity, and a smaller
-    map if possible). Block granularity is also enabled when
-    the obsolete option '--forcegeometry' is found first.
+    *Compatibility mode*:
+
+    If the *first* geometry-related option on the command-line
+    is `--geometry`, *and* if the old format is used, then for
+    compatibility, the old behavior is default instead (i.e.
+    block granularity, and a smaller map if possible). Block
+    granularity is also enabled when the obsolete (and otherwise
+    undocumented) option '--forcegeometry' is found first.
 
     Examples:
 
     `--geometry 10x10-5-5`
 
+    `--geometry 100,100:500,1000`
+
     `--cornergeometry 50x50+100+100`
 
     `--centergeometry 1100x1300+1000-500`
 
-    `--centergeometry 1100x1300`
+    `--geometry 1100x1300`
 
 geometrymode pixel,block,fixed,shrink:
     Specify how the geometry should be interpreted. One or
@@ -198,6 +214,11 @@ geometrymode block:
 geometrymode fixed:
     Generate a map of the requested geometry, even if part
     or all of it would be empty.
+
+    *NOTE*: If this flag is used, and no actual geometry is
+    specified, this would result in a maximum-size map (65536
+    x 65536), which is currently not possible, and will fail,
+    due to a bug in the drawing library.
 
 geometrymode shrink:
     Generate a map of at most the requested geometry. Shrink

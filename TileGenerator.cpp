@@ -259,40 +259,37 @@ void TileGenerator::enableProgressIndicator(void)
 	progressIndicator = true;
 }
 
-void TileGenerator::setGeometry(int x, int y, int w, int h)
+void TileGenerator::setGeometry(const NodeCoord &corner1, const NodeCoord &corner2)
 {
-	if (x > 0) {
-		m_reqXMin = x / 16;
+	if (corner1.x > 0) {
+		m_reqXMin = corner1.x / 16;
 	}
 	else {
-		m_reqXMin = (x - 15) / 16;
+		m_reqXMin = (corner1.x - 15) / 16;
 	}
-	if (y > 0) {
-		m_reqZMin = y / 16;
+	if (corner1.y > 0) {
+		m_reqZMin = corner1.y / 16;
 	}
 	else {
-		m_reqZMin = (y - 15) / 16;
+		m_reqZMin = (corner1.y - 15) / 16;
 	}
-	m_mapXStartNodeOffset = x - m_reqXMin * 16;
-	m_mapYEndNodeOffset = m_reqZMin * 16 - y;
+	m_mapXStartNodeOffset = corner1.x - m_reqXMin * 16;
+	m_mapYEndNodeOffset = m_reqZMin * 16 - corner1.y;
 
-	int x2 = x + w - 1;
-	int y2 = y + h - 1;
-
-	if (x2 > 0) {
-		m_reqXMax = x2 / 16;
+	if (corner2.x > 0) {
+		m_reqXMax = corner2.x / 16;
 	}
 	else {
-		m_reqXMax = (x2 - 15) / 16;
+		m_reqXMax = (corner2.x - 15) / 16;
 	}
-	if (y2 > 0) {
-		m_reqZMax = y2 / 16;
+	if (corner2.y > 0) {
+		m_reqZMax = corner2.y / 16;
 	}
 	else {
-		m_reqZMax = (y2 - 15) / 16;
+		m_reqZMax = (corner2.y - 15) / 16;
 	}
-	m_mapXEndNodeOffset = x2 - (m_reqXMax * 16 + 15);
-	m_mapYStartNodeOffset = (m_reqZMax * 16 + 15) - y2;
+	m_mapXEndNodeOffset = corner2.x - (m_reqXMax * 16 + 15);
+	m_mapYStartNodeOffset = (m_reqZMax * 16 + 15) - corner2.y;
 }
 
 void TileGenerator::setMinY(int y)
