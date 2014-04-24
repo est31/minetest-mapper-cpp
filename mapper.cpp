@@ -245,7 +245,9 @@ int main(int argc, char *argv[])
 						string flag;
 						while (!iss.eof() && !iss.fail()) {
 							iss >> flag;
-							if (flag == "pixel")
+							if (flag == "")
+								(void) true;	// Empty flag - ignore
+							else if (flag == "pixel")
 								generator.setBlockGeometry(false);
 							else if (flag == "block")
 								generator.setBlockGeometry(true);
