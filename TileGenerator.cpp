@@ -128,9 +128,9 @@ TileGenerator::~TileGenerator()
 {
 }
 
-void TileGenerator::setBgColor(const std::string &bgColor)
+void TileGenerator::setBgColor(const Color &bgColor)
 {
-	m_bgColor = parseColor(bgColor);
+	m_bgColor = bgColor;
 }
 
 void TileGenerator::setShrinkGeometry(bool shrink)
@@ -148,24 +148,24 @@ void TileGenerator::setSqliteCacheWorldRow(bool cacheWorldRow)
 	m_sqliteCacheWorldRow = cacheWorldRow;
 }
 
-void TileGenerator::setScaleColor(const std::string &scaleColor)
+void TileGenerator::setScaleColor(const Color &scaleColor)
 {
-	m_scaleColor = parseColor(scaleColor);
+	m_scaleColor = scaleColor;
 }
 
-void TileGenerator::setOriginColor(const std::string &originColor)
+void TileGenerator::setOriginColor(const Color &originColor)
 {
-	m_originColor = parseColor(originColor);
+	m_originColor = originColor;
 }
 
-void TileGenerator::setPlayerColor(const std::string &playerColor)
+void TileGenerator::setPlayerColor(const Color &playerColor)
 {
-	m_playerColor = parseColor(playerColor);
+	m_playerColor = playerColor;
 }
 
-void TileGenerator::setTileBorderColor(const std::string &tileBorderColor)
+void TileGenerator::setTileBorderColor(const Color &tileBorderColor)
 {
-	m_tileBorderColor = parseColor(tileBorderColor);
+	m_tileBorderColor = tileBorderColor;
 }
 
 void TileGenerator::setTileBorderSize(int size)
@@ -183,25 +183,6 @@ void TileGenerator::setTileOrigin(int x, int y)
 {
 	m_tileXOrigin = x;
 	m_tileZOrigin = y;
-}
-
-Color TileGenerator::parseColor(const std::string &color)
-{
-	Color parsed;
-	if (color.length() != 7) {
-		throw std::runtime_error("Color not 7 characters long");
-	}
-	if (color[0] != '#') {
-		throw std::runtime_error("Color does not begin with #");
-	}
-	long col = strtol(color.c_str() + 1, NULL, 16);
-	parsed.a = 255;
-	parsed.b = col % 256;
-	col = col / 256;
-	parsed.g = col % 256;
-	col = col / 256;
-	parsed.r = col % 256;
-	return parsed;
 }
 
 void TileGenerator::setDrawOrigin(bool drawOrigin)

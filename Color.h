@@ -2,10 +2,14 @@
 #ifndef COLOR_H
 #define COLOR_H
 
+#include <string>
+
 struct Color {
-	Color(): r(0xFF), g(0xFF), b(0xFF), a(0) {};
-	Color(uint8_t r, uint8_t g, uint8_t b): r(r), g(g), b(b), a(0xFF) {};
+	Color(): r(0xff), g(0xff), b(0xff), a(0) {};
+	Color(uint32_t c): r((c >> 16) & 0xff), g((c >> 8) & 0xff), b((c >> 0) & 0xff ), a((c >> 24) & 0xff) {};
+	Color(uint8_t r, uint8_t g, uint8_t b): r(r), g(g), b(b), a(0xff) {};
 	Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a): r(r), g(g), b(b), a(a) {};
+	Color(const std::string &s, int alpha = 1);
 	Color &operator=(const Color &c);
 	unsigned to_uint() const { return (unsigned(a) << 24) + (unsigned(r) << 16) + (unsigned(g) << 8) + unsigned(b); }
 	//libgd treats 255 as transparent, and 0 as opaque ...

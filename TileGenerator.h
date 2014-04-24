@@ -86,11 +86,11 @@ private:
 public:
 	TileGenerator();
 	~TileGenerator();
-	void setBgColor(const std::string &bgColor);
-	void setScaleColor(const std::string &scaleColor);
-	void setOriginColor(const std::string &originColor);
-	void setPlayerColor(const std::string &playerColor);
-	Color parseColor(const std::string &color);
+	void setBgColor(const Color &bgColor);
+	void setScaleColor(const Color &scaleColor);
+	void setOriginColor(const Color &originColor);
+	void setPlayerColor(const Color &playerColor);
+	Color parseColor(const Color &color);
 	void setDrawOrigin(bool drawOrigin);
 	void setDrawPlayers(bool drawPlayers);
 	void setDrawScale(bool drawScale);
@@ -102,7 +102,7 @@ public:
 	void setShrinkGeometry(bool shrink);
 	void setBlockGeometry(bool block);
 	void setSqliteCacheWorldRow(bool cacheWorldRow);
-	void setTileBorderColor(const std::string &tileBorderColor);
+	void setTileBorderColor(const Color &tileBorderColor);
 	void setTileBorderSize(int size);
 	void setTileSize(int width, int heigth);
 	void setTileOrigin(int x, int y);

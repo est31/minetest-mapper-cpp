@@ -80,6 +80,7 @@ set(mapper_SRCS
 	PlayerAttributes.cpp
 	TileGenerator.cpp
 	ZlibDecompressor.cpp
+	Color.cpp
 	mapper.cpp
 	db-sqlite3.cpp
 )
