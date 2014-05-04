@@ -5,7 +5,7 @@
 #include <string>
 
 struct Color {
-	Color(): r(0xff), g(0xff), b(0xff), a(0) {};
+	Color(): r(0), g(0), b(0), a(0) {};
 	Color(uint32_t c): r((c >> 16) & 0xff), g((c >> 8) & 0xff), b((c >> 0) & 0xff ), a((c >> 24) & 0xff) {};
 	Color(uint8_t r, uint8_t g, uint8_t b): r(r), g(g), b(b), a(0xff) {};
 	Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a): r(r), g(g), b(b), a(a) {};
