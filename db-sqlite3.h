@@ -3,7 +3,7 @@
 
 #include "db.h"
 #include <sqlite3.h>
-#if _cplusplus >= 201103L
+#if __cplusplus >= 201103L
 #include <unordered_map>
 #else
 #include <map>
@@ -14,7 +14,7 @@
 #include "types.h"
 
 class DBSQLite3 : public DB {
-#if _cplusplus >= 201103L
+#if __cplusplus >= 201103L
 	typedef std::unordered_map<int64_t, ustring>  BlockCache;
 #else
 	typedef std::map<int64_t, ustring>  BlockCache;

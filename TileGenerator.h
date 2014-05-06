@@ -14,7 +14,11 @@
 #include <climits>
 #include <iosfwd>
 #include <list>
+#if __cplusplus >= 201103L
+#include <unordered_map>
+#else
 #include <map>
+#endif
 #include <set>
 #include <stdint.h>
 #include <string>
@@ -31,7 +35,13 @@
 class TileGenerator
 {
 private:
+#if __cplusplus >= 201103L
+	typedef std::unordered_map<std::string, ColorEntry> ColorMap;
+	typedef std::unordered_map<int, std::string> NodeID2NameMap;
+#else
 	typedef std::map<std::string, ColorEntry> ColorMap;
+	typedef std::map<int, std::string> NodeID2NameMap;
+#endif
 
 public:
 	TileGenerator();
@@ -158,7 +168,7 @@ private:
 	int m_pictWidth;
 	int m_pictHeight;
 	std::list<BlockPos> m_positions;
-	std::map<int, std::string> m_nameMap;
+	NodeID2NameMap m_nameMap;
 	ColorMap m_colors;
 	uint16_t m_readedPixels[16];
 	std::set<std::string> m_unknownNodes;

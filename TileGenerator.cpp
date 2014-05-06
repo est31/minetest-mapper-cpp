@@ -965,7 +965,7 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 				if (content == m_blockIgnoreId || content == m_blockAirId) {
 					continue;
 				}
-				std::map<int, std::string>::iterator blockName = m_nameMap.find(content);
+				NodeID2NameMap::iterator blockName = m_nameMap.find(content);
 				if (blockName == m_nameMap.end())
 					continue;
 				const string &name = blockName->second;
