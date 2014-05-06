@@ -18,6 +18,8 @@
 #include <set>
 #include <stdint.h>
 #include <string>
+#include <string>
+#include "types.h"
 #include "PixelAttributes.h"
 #include "Color.h"
 #include "db.h"
@@ -78,9 +80,8 @@ struct BlockPos {
 class TileGenerator
 {
 private:
-	typedef std::basic_string<unsigned char> unsigned_string;
 	typedef std::map<std::string, ColorEntry> ColorMap;
-	typedef std::pair<BlockPos, unsigned_string> Block;
+	typedef std::pair<BlockPos, ustring> Block;
 	typedef std::list<Block> BlockList;
 
 public:
@@ -138,7 +139,7 @@ private:
 	std::list<int> getZValueList() const;
 	Block getBlockOnPos(BlockPos pos);
 	void pushPixelRows(int zPosLimit);
-	void renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version);
+	void renderMapBlock(const ustring &mapBlock, const BlockPos &pos, int version);
 	void renderScale();
 	void renderOrigin();
 	void renderPlayers(const std::string &inputPath);

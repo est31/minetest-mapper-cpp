@@ -881,8 +881,8 @@ void TileGenerator::renderMap()
 
 			ZlibDecompressor decompressor(data, length);
 			decompressor.setSeekPos(dataOffset);
-			ZlibDecompressor::string mapData = decompressor.decompress();
-			ZlibDecompressor::string mapMetadata = decompressor.decompress();
+			ustring mapData = decompressor.decompress();
+			ustring mapMetadata = decompressor.decompress();
 			dataOffset = decompressor.seekPos();
 
 			// Skip unused data
@@ -973,7 +973,7 @@ void TileGenerator::renderMap()
 		cout << std::setw(40) << "" << "\r";
 }
 
-inline void TileGenerator::renderMapBlock(const unsigned_string &mapBlock, const BlockPos &pos, int version)
+inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPos &pos, int version)
 {
 	int xBegin = worldBlockX2StoredX(pos.x);
 	int zBegin = worldBlockZ2StoredY(pos.z);

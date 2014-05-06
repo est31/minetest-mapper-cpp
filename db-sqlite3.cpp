@@ -1,6 +1,7 @@
 #include "db-sqlite3.h"
 #include <stdexcept>
 #include <unistd.h> // for usleep
+#include "types.h"
 
 
 DBSQLite3::DBSQLite3(const std::string &mapdir) :
@@ -138,7 +139,7 @@ DBBlock DBSQLite3::getBlockOnPosRaw(sqlite3_int64 psPos)
 			sqlite3_int64 blocknum = sqlite3_column_int64(m_blockOnPosStatement, 0);
 			const unsigned char *data = reinterpret_cast<const unsigned char *>(sqlite3_column_blob(m_blockOnPosStatement, 1));
 			int size = sqlite3_column_bytes(m_blockOnPosStatement, 1);
-			block = DBBlock(blocknum, std::basic_string<unsigned char>(data, size));
+			block = DBBlock(blocknum, ustring(data, size));
 			m_blocksUnCachedCount++;
 			//std::cerr << "Read block " << blocknum << " from database" << std::endl;
 			break;
@@ -182,7 +183,7 @@ void DBSQLite3::cacheBlocks(sqlite3_stmt *SQLstatement)
 			sqlite3_int64 blocknum = sqlite3_column_int64(SQLstatement, 0);
 			const unsigned char *data = reinterpret_cast<const unsigned char *>(sqlite3_column_blob(SQLstatement, 1));
 			int size = sqlite3_column_bytes(SQLstatement, 1);
-			m_blockCache[blocknum] = DBBlock(blocknum, std::basic_string<unsigned char>(data, size));
+			m_blockCache[blocknum] = DBBlock(blocknum, ustring(data, size));
 			m_blocksCachedCount++;
 			//std::cerr << "Cache block " << blocknum << " from database" << std::endl;
 		} else if (result == SQLITE_BUSY) { // Wait some time and try again

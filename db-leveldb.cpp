@@ -1,6 +1,7 @@
 #include "db-leveldb.h"
 #include <stdexcept>
 #include <sstream>
+#include "types.h"
 
 inline int64_t stoi64(const std::string &s) {
 	std::stringstream tmp(s);
@@ -69,7 +70,7 @@ DBBlock DBLevelDB::getBlockOnPos(int x, int y, int z)
 
 	status = m_db->Get(leveldb::ReadOptions(), i64tos(iPos), &datastr);
 	if(status.ok()) {
-		block = DBBlock( iPos, std::basic_string<unsigned char>( (const unsigned char*) datastr.c_str(), datastr.size() ) );
+		block = DBBlock( iPos, ustring( (const unsigned char*) datastr.c_str(), datastr.size() ) );
 		m_blocksReadCount++;
 		m_blocksUnCachedCount++;
 	}
