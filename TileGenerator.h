@@ -35,8 +35,6 @@ class TileGenerator
 {
 private:
 	typedef std::map<std::string, ColorEntry> ColorMap;
-	typedef std::pair<BlockPos, ustring> Block;
-	typedef std::list<Block> BlockList;
 
 public:
 	TileGenerator();
@@ -91,7 +89,6 @@ private:
                 bool ascending);
 	void renderMap();
 	std::list<int> getZValueList() const;
-	Block getBlockOnPos(BlockPos pos);
 	void pushPixelRows(int zPosLimit);
 	void renderMapBlock(const ustring &mapBlock, const BlockPos &pos, int version);
 	void renderScale();

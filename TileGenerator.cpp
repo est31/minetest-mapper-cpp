@@ -436,12 +436,12 @@ void TileGenerator::loadBlocks()
 	mapZMax = -INT_MIN/16+1;
 	geomYMin = INT_MAX/16-1;
 	geomYMax = -INT_MIN/16+1;
-	std::vector<int64_t> vec = m_db->getBlockPos();
+	const DB::BlockPosList &blocks = m_db->getBlockPos();
 	world_blocks = 0;
 	map_blocks = 0;
-	for(std::vector<int64_t>::iterator it = vec.begin(); it != vec.end(); ++it) {
+	for(DB::BlockPosList::const_iterator it = blocks.begin(); it != blocks.end(); ++it) {
 		world_blocks ++;
-		BlockPos pos = decodeBlockPos(*it);
+		BlockPos pos = *it;
 		if (pos.x < mapXMin) {
 			mapXMin = pos.x;
 		}
@@ -807,34 +807,6 @@ void TileGenerator::createImage()
 	}
 }
 
-TileGenerator::Block TileGenerator::getBlockOnPos(BlockPos pos)
-{
-	DBBlock in = m_db->getBlockOnPos(pos.x, pos.y, pos.z);
-	Block out(pos,(const unsigned char *)"");
-
-	if (!in.second.empty()) {
-		out = Block(decodeBlockPos(in.first), in.second);
-		// Verify. Just to be sure...
-		if (pos.x != out.first.x || pos.y != out.first.y || pos.z != out.first.z) {
-			std::ostringstream oss;
-			oss << "Got unexpexted block: "
-			    << out.first.x << "," << out.first.y << "," << out.first.z
-			    << " from database. Requested: "
-			    << pos.x << "," << pos.y << "," << pos.z;
-			throw std::runtime_error(oss.str());
-		}
-	}
-	else {
-		// I can't imagine this to be possible...
-		std::ostringstream oss;
-		oss << "Failed to get block: "
-		    << pos.x << "," << pos.y << "," << pos.z
-		    << " from database.";
-		throw std::runtime_error(oss.str());
-	}
-	return out;
-}
-
 void TileGenerator::renderMap()
 {
 	int blocks_rendered = 0;
@@ -863,7 +835,7 @@ void TileGenerator::renderMap()
 		else if (allReaded) {
 			continue;
 		}
-		Block block = getBlockOnPos(pos);
+		DB::Block block = m_db->getBlockOnPos(pos);
 		if (!block.second.empty()) {
 			const unsigned char *data = block.second.c_str();
 			size_t length = block.second.length();

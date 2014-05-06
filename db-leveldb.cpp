@@ -47,34 +47,30 @@ int DBLevelDB::getBlocksUnCachedCount(void)
 	return m_blocksUnCachedCount;
 }
 
-std::vector<int64_t> DBLevelDB::getBlockPos() {
-	std::vector<int64_t> vec;
+const DB::BlockPosList &DBLevelDB::getBlockPos() {
+	m_blockPosList.clear();
 	leveldb::Iterator* it = m_db->NewIterator(leveldb::ReadOptions());
 	for (it->SeekToFirst(); it->Valid(); it->Next()) {
-		vec.push_back(stoi64(it->key().ToString()));
+		m_blockPosList.push_back(stoi64(it->key().ToString()));
 	}
 	delete it;
-	return vec;
+	return m_blockPosList;
 }
 
-DBBlock DBLevelDB::getBlockOnPos(int x, int y, int z)
+DB::Block DBLevelDB::getBlockOnPos(const BlockPos &pos)
 {
-	int64_t iPos;
-	DBBlock block(0,(const unsigned char *)"");
 	std::string datastr;
 	leveldb::Status status;
 
-	iPos =  static_cast<int64_t>(x);
-	iPos += static_cast<int64_t>(y) << 12;
-	iPos += static_cast<int64_t>(z) << 24;
-
-	status = m_db->Get(leveldb::ReadOptions(), i64tos(iPos), &datastr);
+	status = m_db->Get(leveldb::ReadOptions(), i64tos(pos.databasePos()), &datastr);
 	if(status.ok()) {
-		block = DBBlock( iPos, ustring( (const unsigned char*) datastr.c_str(), datastr.size() ) );
 		m_blocksReadCount++;
 		m_blocksUnCachedCount++;
+		return Block(pos, ustring(reinterpret_cast<const unsigned char *>(datastr.c_str()), datastr.size()));
+	}
+	else {
+		return Block(pos, ustring(reinterpret_cast<const unsigned char *>("")));
 	}
 
-	return block;
 }
 

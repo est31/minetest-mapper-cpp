@@ -11,14 +11,15 @@ public:
 	virtual int getBlocksUnCachedCount(void);
 	virtual int getBlocksCachedCount(void);
 	virtual int getBlocksReadCount(void);
-	virtual std::vector<int64_t> getBlockPos();
-	virtual DBBlock getBlockOnPos(int x, int y, int z);
+	virtual const BlockPosList &getBlockPos();
+	virtual Block getBlockOnPos(const BlockPos &pos);
 	~DBLevelDB();
 private:
 	int m_blocksReadCount;
 	int m_blocksCachedCount;
 	int m_blocksUnCachedCount;
 	leveldb::DB *m_db;
+	BlockPosList m_blockPosList;
 };
 
 #endif // _DB_LEVELDB_H

@@ -3,21 +3,22 @@
 
 #include <stdint.h>
 #include <vector>
-#include <list>
 #include <string>
 #include <utility>
 
-// we cannot use ... char>> here because mingw-gcc is f**king retarded (caring about whitespace and shit)
-typedef std::pair<int64_t, std::basic_string<unsigned char> > DBBlock;
-typedef std::list<DBBlock> DBBlockList;
+#include "types.h"
+#include "BlockPos.h"
+
 
 class DB {
 public:
-	virtual std::vector<int64_t> getBlockPos()=0;
+	typedef std::pair<BlockPos, ustring> Block;
+	typedef std::vector<int64_t>  BlockPosList;
+	virtual const BlockPosList &getBlockPos()=0;
 	virtual int getBlocksUnCachedCount(void)=0;
 	virtual int getBlocksCachedCount(void)=0;
 	virtual int getBlocksReadCount(void)=0;
-	virtual DBBlock getBlockOnPos(int x, int y, int z)=0;
+	virtual Block getBlockOnPos(const BlockPos &pos)=0;
 };
 
 #endif // _DB_H

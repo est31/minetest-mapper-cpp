@@ -42,8 +42,8 @@ int DBSQLite3::getBlocksUnCachedCount(void)
 	return m_blocksUnCachedCount;
 }
 
-std::vector<int64_t> DBSQLite3::getBlockPos() {
-	std::vector<int64_t> vec;
+const DB::BlockPosList &DBSQLite3::getBlockPos() {
+	m_BlockPosList.clear();
 	std::string sql = "SELECT pos FROM blocks";
 	if (m_blockPosListStatement || sqlite3_prepare_v2(m_db, sql.c_str(), sql.length(), &m_blockPosListStatement, 0) == SQLITE_OK) {
 		int result = 0;
@@ -51,7 +51,7 @@ std::vector<int64_t> DBSQLite3::getBlockPos() {
 			result = sqlite3_step(m_blockPosListStatement);
 			if(result == SQLITE_ROW) {
 				sqlite3_int64 blocknum = sqlite3_column_int64(m_blockPosListStatement, 0);
-				vec.push_back(blocknum);
+				m_BlockPosList.push_back(blocknum);
 			} else if (result == SQLITE_BUSY) // Wait some time and try again
 				usleep(10000);
 			else
@@ -62,7 +62,7 @@ std::vector<int64_t> DBSQLite3::getBlockPos() {
 		throw std::runtime_error("Failed to get list of MapBlocks");
 	}
 	sqlite3_reset(m_blockPosListStatement);
-	return vec;
+	return m_BlockPosList;
 }
 
 void DBSQLite3::prepareBlocksOnZStatement(void)
@@ -82,41 +82,15 @@ void DBSQLite3::prepareBlockOnPosStatement(void)
 	}
 }
 
-// Apparently, this attempt at being smart, is actually quite inefficient for sqlite.
-//
-// For larger subsections of the map, it performs much worse than caching an entire
-// world row (i.e. z coordinate).  In cases where it *is* more efficient, no caching is
-// much more efficient still.
-//
-// It seems that any computation on pos severely affects the performance (?)...
-//
-// For the moment, this function is not used.
-void DBSQLite3::prepareBlocksYRangeStatement(void)
-{
-	// This one seems to perform best:
-	std::string sql = "SELECT pos, data FROM blocks WHERE (pos BETWEEN ?1 AND ?2) AND (pos-?3)&4095 == 0 AND (pos-?3 BETWEEN ?4 AND ?5)";
-	// These perform worse:
-	//std::string sql = "SELECT pos, data FROM blocks WHERE (pos BETWEEN ?1 AND ?2) AND (pos-?3 BETWEEN ?4 AND ?5) AND (pos-?3)&4095 == 0";
-	//std::string sql = "SELECT pos, data FROM blocks WHERE (pos BETWEEN ?1 AND ?2) AND (pos-?3 BETWEEN ?4 AND ?5)";
-	//std::string sql = "SELECT pos, data FROM (select pos, data FROM blocks WHERE (pos BETWEEN ?1 AND ?2) ) WHERE (pos-?3 BETWEEN ?4 AND ?5) AND (pos-?3)&4095 == 0";
-	//std::string sql = "SELECT pos, data FROM (select pos, (pos-?3) AS pos3, data FROM blocks WHERE (pos BETWEEN ?1 AND ?2) ) WHERE (pos3 BETWEEN ?4 AND ?5) AND (pos3)&4095 == 0";
-	//std::string sql = "SELECT pos, data FROM (select pos, (pos-?3) AS pos3, data FROM blocks WHERE (pos BETWEEN ?1 AND ?2) ) WHERE (pos3 BETWEEN ?4 AND ?5)";
-	if (!m_blocksYRangeStatement && sqlite3_prepare_v2(m_db, sql.c_str(), sql.length(), &m_blocksYRangeStatement, 0) != SQLITE_OK) {
-		throw std::runtime_error("Failed to prepare SQL statement (blocksYRangeStatement)");
-	}
-}
-
 void DBSQLite3::cacheBlocksOnZRaw(int zPos)
 {
 	prepareBlocksOnZStatement();
 
-	DBBlockList blocks;
-
 	sqlite3_int64 psMin;
 	sqlite3_int64 psMax;
 
-	psMin = (static_cast<sqlite3_int64>(zPos) * 16777216l) - 0x800000;
-	psMax = (static_cast<sqlite3_int64>(zPos) * 16777216l) + 0x7fffff;
+	psMin = (static_cast<sqlite3_int64>(zPos) * 0x1000000L) - 0x800000;
+	psMax = (static_cast<sqlite3_int64>(zPos) * 0x1000000L) + 0x7fffff;
 
 	sqlite3_bind_int64(m_blocksOnZStatement, 1, psMin);
 	sqlite3_bind_int64(m_blocksOnZStatement, 2, psMax);
@@ -124,24 +98,22 @@ void DBSQLite3::cacheBlocksOnZRaw(int zPos)
 	cacheBlocks(m_blocksOnZStatement);
 }
 
-DBBlock DBSQLite3::getBlockOnPosRaw(sqlite3_int64 psPos)
+DB::Block DBSQLite3::getBlockOnPosRaw(const BlockPos &pos)
 {
 	prepareBlockOnPosStatement();
 
-	DBBlock block(0,(const unsigned char *)"");
+	Block block(pos,reinterpret_cast<const unsigned char *>(""));
 	int result = 0;
 
-	sqlite3_bind_int64(m_blockOnPosStatement, 1, psPos);
+	sqlite3_bind_int64(m_blockOnPosStatement, 1, pos.databasePos());
 
 	while (true) {
 		result = sqlite3_step(m_blockOnPosStatement);
 		if(result == SQLITE_ROW) {
-			sqlite3_int64 blocknum = sqlite3_column_int64(m_blockOnPosStatement, 0);
 			const unsigned char *data = reinterpret_cast<const unsigned char *>(sqlite3_column_blob(m_blockOnPosStatement, 1));
 			int size = sqlite3_column_bytes(m_blockOnPosStatement, 1);
-			block = DBBlock(blocknum, ustring(data, size));
+			block = Block(pos, ustring(data, size));
 			m_blocksUnCachedCount++;
-			//std::cerr << "Read block " << blocknum << " from database" << std::endl;
 			break;
 		} else if (result == SQLITE_BUSY) { // Wait some time and try again
 			usleep(10000);
@@ -154,26 +126,6 @@ DBBlock DBSQLite3::getBlockOnPosRaw(sqlite3_int64 psPos)
 	return block;
 }
 
-void DBSQLite3::cacheBlocksYRangeRaw(int x, int y, int z)
-{
-	prepareBlocksYRangeStatement();
-
-	sqlite3_int64 psZPosFrom = (static_cast<sqlite3_int64>(z) << 24) - 0x800000;
-	sqlite3_int64 psZPosTo   = (static_cast<sqlite3_int64>(z) << 24) + 0x7fffff;
-	sqlite3_int64 psPosZero  =  static_cast<sqlite3_int64>(x);
-	              psPosZero  += static_cast<sqlite3_int64>(z) << 24;
-	sqlite3_int64 psYPosFrom =  0;
-	sqlite3_int64 psYPosTo   =  static_cast<sqlite3_int64>(y) << 12;
-
-	sqlite3_bind_int64(m_blocksYRangeStatement, 1, psZPosFrom);
-	sqlite3_bind_int64(m_blocksYRangeStatement, 2, psZPosTo);
-	sqlite3_bind_int64(m_blocksYRangeStatement, 3, psPosZero);
-	sqlite3_bind_int64(m_blocksYRangeStatement, 4, psYPosFrom);
-	sqlite3_bind_int64(m_blocksYRangeStatement, 5, psYPosTo);
-
-	cacheBlocks(m_blocksYRangeStatement);
-}
-
 void DBSQLite3::cacheBlocks(sqlite3_stmt *SQLstatement)
 {
 	int result = 0;
@@ -183,9 +135,8 @@ void DBSQLite3::cacheBlocks(sqlite3_stmt *SQLstatement)
 			sqlite3_int64 blocknum = sqlite3_column_int64(SQLstatement, 0);
 			const unsigned char *data = reinterpret_cast<const unsigned char *>(sqlite3_column_blob(SQLstatement, 1));
 			int size = sqlite3_column_bytes(SQLstatement, 1);
-			m_blockCache[blocknum] = DBBlock(blocknum, ustring(data, size));
+			m_blockCache[blocknum] = ustring(data, size);
 			m_blocksCachedCount++;
-			//std::cerr << "Cache block " << blocknum << " from database" << std::endl;
 		} else if (result == SQLITE_BUSY) { // Wait some time and try again
 			usleep(10000);
 		} else {
@@ -195,36 +146,30 @@ void DBSQLite3::cacheBlocks(sqlite3_stmt *SQLstatement)
 	sqlite3_reset(SQLstatement);
 }
 
-DBBlock DBSQLite3::getBlockOnPos(int x, int y, int z)
+DB::Block DBSQLite3::getBlockOnPos(const BlockPos &pos)
 {
-	sqlite3_int64 psPos;
-	psPos =  static_cast<sqlite3_int64>(x);
-	psPos += static_cast<sqlite3_int64>(y) << 12;
-	psPos += static_cast<sqlite3_int64>(z) << 24;
-	//std::cerr << "Block " << x << "," << y << "," << z << " -> " << psPos << std::endl;
-
 	m_blocksReadCount++;
 
 	BlockCache::const_iterator DBBlockSearch;
-	DBBlockSearch = m_blockCache.find(psPos);
+	DBBlockSearch = m_blockCache.find(pos.databasePos());
 	if (DBBlockSearch == m_blockCache.end()) {
 		if (cacheWorldRow) {
 			m_blockCache.clear();
-			cacheBlocksOnZRaw(z);
-			DBBlockSearch = m_blockCache.find(psPos);
+			cacheBlocksOnZRaw(pos.z);
+			DBBlockSearch = m_blockCache.find(pos.databasePos());
 			if (DBBlockSearch != m_blockCache.end()) {
-				return DBBlockSearch->second;
+				return Block(pos, DBBlockSearch->second);
 			}
 			else {
-				return DBBlock(0, (const unsigned char *)"");
+				return Block(pos,reinterpret_cast<const unsigned char *>(""));
 			}
 		}
 		else {
-			return getBlockOnPosRaw(psPos);
+			return getBlockOnPosRaw(pos);
 		}
 	}
 	else {
-		return DBBlockSearch->second;
+		return Block(pos, DBBlockSearch->second);
 	}
 }
 
