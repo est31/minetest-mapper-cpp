@@ -25,9 +25,6 @@
 #include "Color.h"
 #include "db.h"
 
-#define MINETEST_MAPBLOCK_MIN	(-2048)
-#define MINETEST_MAPBLOCK_MAX	2047
-
 #define TILECENTER_IS_WORLDCENTER	INT_MAX
 #define TILECENTER_IS_MAPCENTER		INT_MIN
 
