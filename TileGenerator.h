@@ -21,6 +21,7 @@
 #include <string>
 #include "types.h"
 #include "PixelAttributes.h"
+#include "BlockPos.h"
 #include "Color.h"
 #include "db.h"
 
@@ -29,53 +30,6 @@
 
 #define TILECENTER_IS_WORLDCENTER	INT_MAX
 #define TILECENTER_IS_MAPCENTER		INT_MIN
-
-struct BlockPos {
-	int x;
-	int y;
-	int z;
-	// operator< should order the positions in the
-	// order the corresponding pixels are generated:
-	// First (most significant): z coordinate, descending (i.e. reversed)
-	// Then                    : x coordinate, ascending
-	// Last (least significant): y coordinate, descending (i.e. reversed)
-	bool operator<(const BlockPos& p) const
-	{
-		if (z > p.z) {
-			return true;
-		}
-		if (z < p.z) {
-			return false;
-		}
-		if (x < p.x) {
-			return true;
-		}
-		if (x > p.x) {
-			return false;
-		}
-		if (y > p.y) {
-			return true;
-		}
-		if (y < p.y) {
-			return false;
-		}
-		return false;
-	}
-	bool operator==(const BlockPos& p) const
-	{
-		if (z != p.z) {
-			return false;
-		}
-		if (y != p.y) {
-			return false;
-		}
-		if (x != p.x) {
-			return false;
-		}
-		return true;
-	}
-};
-
 
 class TileGenerator
 {
