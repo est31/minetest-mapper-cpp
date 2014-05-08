@@ -76,8 +76,14 @@ scalecolor:
 playercolor:
     Color of player indicators, `--playercolor #ff0000`
 
+    An alpha value can be specified, but due to a bug in the
+    drawing library, it will not have the desired effect.
+
 origincolor:
     Color of origin indicator, `--origincolor #ff0000`
+
+    An alpha value can be specified, but due to a bug in the
+    drawing library, it will not have the desired effect.
 
 drawscale:
     Draw tick marks, `--drawscale`

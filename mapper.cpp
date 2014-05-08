@@ -51,7 +51,9 @@ void usage()
 			"  --tileorigin <x>,<y>|center-world|center-map\n"
 			"  --verbose[=n]\n"
 			"  --progress\n"
-			"Color format: '#000' or '#000000'\n"
+			"Color formats:\n"
+			"\t'#000' or '#000000'                                  (RGB)\n"
+			"\t'#0000' or '#0000000'                                (ARGB - usable if an alpha value is allowed)\n"
 			"Geometry formats:\n"
 			"\t<width>x<heigth>[+|-<xoffset>+|-<yoffset>]\n"
 			"\t<xoffset>:<yoffset>+<width>+<height>\n";
@@ -132,10 +134,10 @@ int main(int argc, char *argv[])
 					generator.setScaleColor(Color(optarg,0));
 					break;
 				case 'r':
-					generator.setOriginColor(Color(optarg,0));
+					generator.setOriginColor(Color(optarg,1));
 					break;
 				case 'p':
-					generator.setPlayerColor(Color(optarg,0));
+					generator.setPlayerColor(Color(optarg,1));
 					break;
 				case 'B':
 					generator.setTileBorderColor(Color(optarg,0));
