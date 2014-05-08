@@ -898,6 +898,7 @@ void TileGenerator::renderMap()
 					uint16_t nameLen = readU16(data + dataOffset);
 					dataOffset += 2;
 					string name = string(reinterpret_cast<const char *>(data) + dataOffset, nameLen);
+					name = name.c_str();		// Truncate any trailing NUL bytes
 					if (name == "air") {
 						m_blockAirId = nodeId;
 					}
