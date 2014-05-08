@@ -62,6 +62,9 @@ colors <file>:
 
     * In the directory of the world being mapped
 
+    * In the directory two levels up from the directory of the world being mapped,
+      provided that directory contains a file 'minetest.conf'
+
     * In the user's private directory ($HOME/.minetest)
 
     * For compatibility, in the current directory as a last resort.

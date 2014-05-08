@@ -14,6 +14,9 @@
 #include <string>
 #include <sstream>
 #include <stdexcept>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include "TileGenerator.h"
 #include "ZlibDecompressor.h"
 
@@ -58,6 +61,67 @@ void usage()
 			"\t<width>x<heigth>[+|-<xoffset>+|-<yoffset>]\n"
 			"\t<xoffset>:<yoffset>+<width>+<height>\n";
 	std::cout << usage_text;
+}
+
+void parseColorsFile(TileGenerator &generator, const string &input, string colorsFile) {
+	if (!colorsFile.empty()) {
+		generator.parseColorsFile(colorsFile);
+	}
+	else {
+		bool colorsFound = false;
+		char *homedir;
+		colorsFile = input + PATH_SEPARATOR +  "colors.txt";
+
+		try {
+			generator.parseColorsFile(colorsFile);
+			colorsFound = true;
+		} catch (std::runtime_error e) {
+			// Ignore failure to locate world-specific colors file
+		}
+
+		if (!colorsFound) {
+			// Check if '../..' seems like a valid minetest directory
+			string file = input + PATH_SEPARATOR + ".." + PATH_SEPARATOR + ".." + PATH_SEPARATOR + "minetest.conf";
+			int fd;
+			if (0 <= (fd = open(file.c_str(), O_RDONLY))) {
+				close(fd);
+				colorsFile = input + PATH_SEPARATOR + ".." + PATH_SEPARATOR + ".." + PATH_SEPARATOR + "colors.txt";
+				try {
+					generator.parseColorsFile(colorsFile);
+					colorsFound = true;
+				} catch (std::runtime_error e) {
+					// Ignore failure to locate world-specific colors file
+				}
+			}
+		}
+
+		if (!colorsFound && (homedir = getenv("HOME"))) {
+			colorsFile = string(homedir) + PATH_SEPARATOR + ".minetest" + PATH_SEPARATOR + "colors.txt";
+			try {
+				generator.parseColorsFile(colorsFile);
+				colorsFound = true;
+			} catch (std::runtime_error e) {
+				// Ignore failure to locate user private colors file
+			}
+		}
+
+		// TODO: look for system-wide colors file (?) (e.g. /usr/share/games/minetest/colors.txt)
+		// (location should be subject to a build-time configuration of the installation directory)
+
+		if (!colorsFound) {
+			try {
+				generator.parseColorsFile("colors.txt");
+				// I hope this is not obnoxious to windows users ?
+				cerr	<< "Warning: Using colors.txt in current directory as a last resort." << std::endl
+					<< "         Preferably, store the colors file in the world directory" << std::endl;
+				if (homedir)
+					cerr	<< "         or in the private minetest directory ($HOME/.minetest)." << std::endl;
+				cerr	<< "         It can also be specified on the command-line" << std::endl;
+			} catch(std::runtime_error e) {
+				throw std::runtime_error("Failed to find or failed to open a colors.txt file.");
+			}
+		}
+	}
 }
 
 int main(int argc, char *argv[])
@@ -354,49 +418,7 @@ int main(int argc, char *argv[])
 	}
 
 	try {
-		if (!colorsFile.empty()) {
-			generator.parseColorsFile(colorsFile);
-		}
-		else {
-			bool colorsFound = false;
-			char *homedir;
-			colorsFile = input + PATH_SEPARATOR +  "colors.txt";
-
-			try {
-				generator.parseColorsFile(colorsFile);
-				colorsFound = true;
-			} catch (std::runtime_error e) {
-				// Ignore failure to locate world-specific colors file
-			}
-
-			if (!colorsFound && (homedir = getenv("HOME"))) {
-				colorsFile = string(homedir) + PATH_SEPARATOR + ".minetest" + PATH_SEPARATOR + "colors.txt";
-				try {
-					generator.parseColorsFile(colorsFile);
-					colorsFound = true;
-				} catch (std::runtime_error e) {
-					// Ignore failure to locate user private colors file
-				}
-			}
-
-			// TODO: look for system-wide colors file (?) (e.g. /usr/share/games/minetest/colors.txt)
-			// (location should be subject to a build-time configuration of the installation directory)
-
-			if (!colorsFound) {
-				try {
-					generator.parseColorsFile("colors.txt");
-					// I hope this is not obnoxious to windows users ?
-					cerr	<< "Warning: Using colors.txt in current directory as a last resort." << std::endl
-						<< "         Preferably, store the colors file in the world directory" << std::endl;
-					if (homedir)
-						cerr	<< "         or in the private minetest directory ($HOME/.minetest)." << std::endl;
-					cerr	<< "         It can also be specified on the command-line" << std::endl;
-				} catch(std::runtime_error e) {
-					throw std::runtime_error("Failed to find or failed to open a colors.txt file.");
-				}
-			}
-		}
-
+		parseColorsFile(generator, input, colorsFile);
 		generator.generate(input, output);
 	} catch(std::runtime_error e) {
 		std::cout<<"Exception: "<<e.what()<<std::endl;
