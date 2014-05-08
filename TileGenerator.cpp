@@ -830,6 +830,7 @@ void TileGenerator::renderMap()
 			for (int i = 0; i < 16; ++i) {
 				m_readedPixels[i] = 0;
 			}
+			allReaded = false;
 			currentPos = pos;
 		}
 		else if (allReaded) {
