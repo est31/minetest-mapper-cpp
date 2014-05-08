@@ -12,8 +12,8 @@ struct Color {
 	Color(const std::string &s, int alpha = 1);
 	Color &operator=(const Color &c);
 	unsigned to_uint() const { return (unsigned(a) << 24) + (unsigned(r) << 16) + (unsigned(g) << 8) + unsigned(b); }
-	//libgd treats 255 as transparent, and 0 as opaque ...
-	int to_libgd() const { return ((0xff - int(a)) << 24) + (int(r) << 16) + (int(g) << 8) + int(b); }
+	//libgd treats 127 as transparent, and 0 as opaque ...
+	int to_libgd() const { return (((0xff - int(a)) >> 1) << 24) + (int(r) << 16) + (int(g) << 8) + int(b); }
 	uint8_t r;
 	uint8_t g;
 	uint8_t b;
