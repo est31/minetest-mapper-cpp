@@ -42,8 +42,32 @@ private:
 	typedef std::map<std::string, ColorEntry> ColorMap;
 	typedef std::map<int, std::string> NodeID2NameMap;
 #endif
-
 public:
+	struct DrawObject {
+		void setCenter(const NodeCoord &c) { haveCenter = true; center = c; }
+		void setCorner1(const NodeCoord &c) { haveCenter = false; corner1 = c; }
+		void setDimensions(const NodeCoord &d) { haveDimensions = true; dimensions = d; }
+		void setCorner2(const NodeCoord &c) { haveDimensions = false; corner2 = c; }
+		enum Type {
+			Unknown,
+			Point,
+			Line,
+			Ellipse,
+			Rectangle,
+			Text
+		};
+		bool world;
+		Type type;
+		bool haveCenter;
+		NodeCoord corner1;
+		NodeCoord center;
+		bool haveDimensions;
+		NodeCoord corner2;
+		NodeCoord dimensions;
+		Color color;
+		std::string text;
+	};
+
 	struct UnpackError
 	{
 		BlockPos pos;
@@ -65,6 +89,7 @@ public:
 	void setDrawPlayers(bool drawPlayers);
 	void setDrawScale(bool drawScale);
 	void setDrawAlpha(bool drawAlpha);
+	void drawObject(const DrawObject &object) { m_drawObjects.push_back(object); }
 	void setShading(bool shading);
 	void setGeometry(const NodeCoord &corner1, const NodeCoord &corner2);
 	void setMinY(int y);
@@ -113,6 +138,7 @@ private:
 	void renderScale();
 	void renderOrigin();
 	void renderPlayers(const std::string &inputPath);
+	void renderDrawObjects();
 	void writeImage(const std::string &output);
 	void printUnknown();
 	int mapX2ImageX(int val) const;
@@ -184,6 +210,7 @@ private:
 	ColorMap m_colors;
 	uint16_t m_readedPixels[16];
 	std::set<std::string> m_unknownNodes;
+	std::vector<DrawObject> m_drawObjects;
 
 	int m_blockAirId;
 	int m_blockIgnoreId;

@@ -279,6 +279,36 @@ tileorigin x,y
 tilebordercolor
     Color of border between tiles, `--tilebordercolor #000000`
 
+draw[map]<figure> "<geometry> <color> [<text>]"
+    Draw a geometrical figure on the map, using either world or map
+    coordinates.
+
+    NOTE: the quotes around the two or three parameters to these
+    options are absolutely required.
+
+    Possible figures: point, line, circle, ellipse, rectangle, text;
+    'circle' is an alias for 'ellipse' - it therefore requires
+    two dimensions, just like an ellipse.
+
+    Examples:
+
+    `--drawellipse "5x5+2+3 #ff0000"`
+
+    `--drawcircle "4,5:5x4 #ff0000"`
+
+    `--drawline "5x5+8+8 #80ff0000"`
+
+    `--drawline "8,8:12,12 #80ff0000"`
+
+    `--drawmapline "3x5+4+6 #ffff0000"`
+
+    `--drawtext "0,0 #808080 center of the world"
+
+    `--drawmaptext "0,0 #808080 top left of the map"
+
+    Note that specifying an alpha value does not have the expected
+    result when drawing an ellipse.
+
 verbose:
     report some useful / interesting information:
 

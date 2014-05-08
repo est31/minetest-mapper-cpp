@@ -23,6 +23,7 @@ using namespace std;
 
 #define OPT_SQLITE_CACHEWORLDROW	0x81
 #define OPT_PROGRESS_INDICATOR		0x82
+#define OPT_DRAW_OBJECT			0x83
 
 class FuzzyBool {
 private:
@@ -61,6 +62,12 @@ void usage()
 			"  --drawplayers\n"
 			"  --draworigin\n"
 			"  --drawalpha\n"
+			"  --draw[map]point \"<x>,<y> color\"\n"
+			"  --draw[map]line \"<geometry> color\"\n"
+			"  --draw[map]circle \"<geometry> color\"\n"
+			"  --draw[map]ellipse \"<geometry> color\"\n"
+			"  --draw[map]rectangle \"<geometry> color\"\n"
+			"  --draw[map]text \"<x>,<y> color text\"\n"
 			"  --noshading\n"
 			"  --min-y <y>\n"
 			"  --max-y <y>\n"
@@ -483,6 +490,18 @@ int main(int argc, char *argv[])
 		{"drawplayers", no_argument, 0, 'P'},
 		{"drawscale", no_argument, 0, 'S'},
 		{"drawalpha", no_argument, 0, 'e'},
+		{"drawpoint", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawline", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawcircle", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawellipse", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawrectangle", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawtext", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawmappoint", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawmapline", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawmapcircle", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawmapellipse", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawmaprectangle", required_argument, 0, OPT_DRAW_OBJECT},
+		{"drawmaptext", required_argument, 0, OPT_DRAW_OBJECT},
 		{"noshading", no_argument, 0, 'H'},
 		{"geometry", required_argument, 0, 'g'},
 		{"cornergeometry", required_argument, 0, 'g'},
@@ -731,6 +750,116 @@ int main(int argc, char *argv[])
 						}
 						generator.setGeometry(coord1, coord2);
 						foundGeometrySpec = true;
+					}
+					break;
+				case OPT_DRAW_OBJECT: {
+						TileGenerator::DrawObject drawObject;
+						drawObject.world = long_options[option_index].name[4] != 'm';
+						char object = long_options[option_index].name[4 + (drawObject.world ? 0 : 3)];
+						switch (object) {
+						case 'p' :
+							drawObject.type = TileGenerator::DrawObject::Point;
+							break;
+						case 'l' :
+							drawObject.type = TileGenerator::DrawObject::Line;
+							break;
+						case 'r' :
+							drawObject.type = TileGenerator::DrawObject::Rectangle;
+							break;
+						case 'e' :
+						case 'c' :
+							drawObject.type = TileGenerator::DrawObject::Ellipse;
+							break;
+						case 't' :
+							drawObject.type = TileGenerator::DrawObject::Text;
+							break;
+						default :
+							std::cerr << "Internal error: unrecognised object ("
+								<< long_options[option_index].name
+								<< ")" << std::endl;
+							exit(1);
+							break;
+						}
+
+						istringstream iss;
+						iss.str(optarg);
+						NodeCoord coord1;
+						NodeCoord coord2;
+						NodeCoord dimensions;
+						FuzzyBool needDimensions;
+						bool legacy;
+						bool centered;
+
+						if (object == 'p' || object == 't')
+							needDimensions = FuzzyBool::No;
+						else
+							needDimensions = FuzzyBool::Yes;
+						if (!parseGeometry(iss, coord1, coord2, dimensions, legacy, centered, 2, needDimensions)) {
+							std::cerr << "Invalid drawing geometry specification for "
+								<< long_options[option_index].name
+								<< " '" << optarg << "'" << std::endl;
+							usage();
+							exit(1);
+						}
+						bool haveCoord2 = coord2.dimension[0] != NodeCoord::Invalid
+							&& coord2.dimension[1] != NodeCoord::Invalid;
+						bool haveDimensions = dimensions.dimension[0] != NodeCoord::Invalid
+							&& dimensions.dimension[1] != NodeCoord::Invalid;
+
+						if (object == 'p' || object == 't') {
+							for (int i = 0; i < 2; i++)
+								if (coord1.isBlock[i]) {
+									coord1.dimension[i] *= 16;
+									coord1.isBlock[i] = false;
+								}
+							drawObject.setCenter(coord1);
+							drawObject.setDimensions(NodeCoord(1,1,1));
+						}
+						else {
+							if (haveDimensions) {
+								if (centered)
+									drawObject.setCenter(coord1);
+								else
+									drawObject.setCorner1(coord1);
+								drawObject.setDimensions(dimensions);
+							}
+							else if (haveCoord2) {
+								drawObject.setCorner1(coord1);
+								drawObject.setCorner2(coord2);
+							}
+							else {
+#ifdef DEBUG
+								assert(!haveDimensions && !haveCoord2);
+#else
+								break;
+#endif
+							}
+						}
+
+						string colorStr;
+						iss >> std::ws >> colorStr;
+						if (iss.fail()) {
+							std::cerr << "Invalid color specification for "
+								<< long_options[option_index].name
+								<< " '" << optarg << "'" << std::endl;
+							usage();
+							exit(1);
+						}
+						drawObject.color = colorStr;
+
+						if (object == 't') {
+							iss >> std::ws;
+							std::getline(iss, drawObject.text);
+							if (drawObject.text.empty() || iss.fail()) {
+								std::cerr << "Invalid or missing text for "
+									<< long_options[option_index].name
+									<< " '" << optarg << "'" << std::endl;
+								usage();
+								exit(1);
+							}
+						}
+
+						generator.drawObject(drawObject);
 					}
 					break;
 				case 'd':

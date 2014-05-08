@@ -352,6 +352,9 @@ void TileGenerator::generate(const std::string &input, const std::string &output
 	if (m_drawPlayers) {
 		renderPlayers(input_path);
 	}
+	if (!m_drawObjects.empty()) {
+		renderDrawObjects();
+	}
 	writeImage(output);
 	printUnknown();
 }
@@ -1194,6 +1197,149 @@ void TileGenerator::renderPlayers(const std::string &inputPath)
 
 		gdImageArc(m_image, imageX, imageY, 5, 5, 0, 360, color);
 		gdImageString(m_image, gdFontGetMediumBold(), imageX + 2, imageY + 2, reinterpret_cast<unsigned char *>(const_cast<char *>(player->name.c_str())), color);
+	}
+}
+
+void TileGenerator::renderDrawObjects(void)
+{
+	for (std::vector<DrawObject>::iterator o = m_drawObjects.begin(); o != m_drawObjects.end(); o++) {
+		// Hack to adjust the center of an ellipse with even dimensions to align it correctly
+		bool ellipseAdjustCenter[2] = { 0, 1 };
+#ifdef DEBUG
+		assert(o->type != DrawObject::Unknown);
+		assert(o->haveDimensions || !o->haveCenter);
+		// Look for problems...
+		if (o->haveCenter)
+			o->corner1 = NodeCoord(NodeCoord::Invalid, NodeCoord::Invalid, NodeCoord::Invalid);
+		else
+			o->center = NodeCoord(NodeCoord::Invalid, NodeCoord::Invalid, NodeCoord::Invalid);
+		if (o->haveDimensions)
+			o->corner2 = NodeCoord(NodeCoord::Invalid, NodeCoord::Invalid, NodeCoord::Invalid);
+		else
+			o->dimensions = NodeCoord(NodeCoord::Invalid, NodeCoord::Invalid, NodeCoord::Invalid);
+#else
+		// Avoid problems - the resulting image may still be incorrect though...
+		if (o->type == DrawObject::Unknown)
+			continue;
+		if (o->haveCenter)
+			o->corner1 = o->center;
+		else
+			o->center = o->corner1;
+		if (o->haveDimensions)
+			o->corner2 = o->dimensions;
+		else
+			o->dimensions = o->corner2;
+		if (!o->haveDimensions && o->haveCenter)
+			o->haveDimensions = true;
+#endif
+		for (int i = 0; i < 2; i++) {
+			if (o->world) {
+				int (TileGenerator::*world2Image)(int val) const;
+				if (i==0)
+					world2Image = &TileGenerator::worldX2ImageX;
+				else
+					world2Image = &TileGenerator::worldZ2ImageY;
+				if (o->haveCenter)
+					o->center.dimension[i] = (this->*world2Image)(o->center.dimension[i]);
+				else
+					o->corner1.dimension[i] = (this->*world2Image)(o->corner1.dimension[i]);
+				if (!o->haveDimensions) {
+					o->corner2.dimension[i] = (this->*world2Image)(o->corner2.dimension[i]);
+					if (i == 1)
+						ellipseAdjustCenter[i] = !ellipseAdjustCenter[i];
+				}
+				else if (i==1) {
+					o->dimensions.dimension[i] = -o->dimensions.dimension[i];
+					ellipseAdjustCenter[i] = !ellipseAdjustCenter[i];
+				}
+			}
+			else {
+				if (o->haveCenter)
+					o->center.dimension[i] += m_border;
+				else
+					o->corner1.dimension[i] += m_border;
+				if (!o->haveDimensions)
+					o->corner2.dimension[i] += m_border;
+			}
+		}
+
+		for (int i = 0; i < 2; i++) {
+			// Make sure all individual coordinates are ordered and dimensions are positive
+			// EXCEPT for lines: lines do not have reflection symmetry.
+			if (o->type != DrawObject::Line) {
+				if (!o->haveDimensions) {
+					if (o->corner1.dimension[i] > o->corner2.dimension[i]) {
+						int temp = o->corner1.dimension[i];
+						o->corner1.dimension[i] = o->corner2.dimension[i];
+						o->corner2.dimension[i] = temp;
+						ellipseAdjustCenter[i] = !ellipseAdjustCenter[i];
+					}
+				}
+				else if (o->dimensions.dimension[i] < 0) {
+					if (!o->haveCenter)
+						o->corner1.dimension[i] += o->dimensions.dimension[i] + 1;
+					else
+						// Even dimensions cause asymetry
+						o->center.dimension[i] += ((1 - o->dimensions.dimension[i]) % 2);
+					o->dimensions.dimension[i] = -o->dimensions.dimension[i];
+					ellipseAdjustCenter[i] = !ellipseAdjustCenter[i];
+				}
+			}
+
+			// Convert to the apropriate type of coordinates.
+			if (o->type == DrawObject::Ellipse) {
+				if (!o->haveDimensions) {
+					o->dimensions.dimension[i] = o->corner2.dimension[i] - o->corner1.dimension[i] + 1;
+					o->center.dimension[i] = o->corner1.dimension[i] + o->dimensions.dimension[i] / 2;
+				}
+				else if (!o->haveCenter) {
+					o->center.dimension[i] = o->corner1.dimension[i] + o->dimensions.dimension[i] / 2;
+				}
+				if (o->world && ellipseAdjustCenter[i] && o->dimensions.dimension[i] % 2 == 0)
+					o->center.dimension[i] -= 1;
+			}
+			else if (o->type == DrawObject::Line || o->type == DrawObject::Rectangle) {
+				if (o->haveCenter) {
+					o->corner1.dimension[i] = o->center.dimension[i] - o->dimensions.dimension[i] / 2;
+					if (o->dimensions.dimension[i] < 0)
+						o->corner2.dimension[i] = o->corner1.dimension[i] + o->dimensions.dimension[i] + 1;
+					else
+						o->corner2.dimension[i] = o->corner1.dimension[i] + o->dimensions.dimension[i] - 1;
+				}
+				else if (o->haveDimensions) {
+					if (o->dimensions.dimension[i] < 0)
+						o->corner2.dimension[i] = o->corner1.dimension[i] + o->dimensions.dimension[i] + 1;
+					else
+						o->corner2.dimension[i] = o->corner1.dimension[i] + o->dimensions.dimension[i] - 1;
+				}
+			}
+#ifdef DEBUG
+			else
+				assert(o->type == DrawObject::Point || o->type == DrawObject::Text);
+#endif
+		}
+		switch(o->type) {
+		case DrawObject::Point:
+			gdImageSetPixel(m_image, o->center.x, o->center.y, o->color.to_libgd());
+			break;
+		case DrawObject::Line:
+			gdImageLine(m_image, o->corner1.x, o->corner1.y, o->corner2.x, o->corner2.y, o->color.to_libgd());
+			break;
+		case DrawObject::Ellipse:
+			gdImageArc(m_image, o->center.x, o->center.y, o->dimensions.x, o->dimensions.y, 0, 360, o->color.to_libgd());
+			break;
+		case DrawObject::Rectangle:
+			gdImageRectangle(m_image, o->corner1.x, o->corner1.y, o->corner2.x, o->corner2.y, o->color.to_libgd());
+			break;
+		case DrawObject::Text:
+			gdImageString(m_image, gdFontGetMediumBold(), o->center.x, o->center.y, reinterpret_cast<unsigned char *>(const_cast<char *>(o->text.c_str())), o->color.to_libgd());
+			break;
+		default:
+#ifdef DEBUG
+			assert(o->type != o->type);
+#endif
+			break;
+		}
 	}
 }
 
