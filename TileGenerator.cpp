@@ -91,7 +91,7 @@ TileGenerator::TileGenerator():
 	m_shading(true),
 	m_border(0),
 	m_backend("sqlite3"),
-	m_shrinkGeometry(false),
+	m_shrinkGeometry(true),
 	m_blockGeometry(false),
 	m_sqliteCacheWorldRow(false),
 	m_image(0),

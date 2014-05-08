@@ -95,6 +95,7 @@ int main(int argc, char *argv[])
 	string output;
 	string colorsFile;
 	bool foundGeometrySpec = false;
+	bool setFixedOrShrinkGeometry = false;
 
 	TileGenerator generator;
 	try {
@@ -234,6 +235,7 @@ int main(int argc, char *argv[])
 						// '--forcegeometry'
 						// Old behavior - for compatibility.
 						generator.setShrinkGeometry(false);
+						setFixedOrShrinkGeometry = true;
 						if (!foundGeometrySpec)
 							generator.setBlockGeometry(true);
 					}
@@ -261,6 +263,8 @@ int main(int argc, char *argv[])
 								usage();
 								exit(1);
 							}
+							if (flag == "fixed" || flag == "shrink")
+								setFixedOrShrinkGeometry = true;
 						}
 						if (iss.fail()) {
 							// Don't know when / if this could happen...
@@ -272,6 +276,27 @@ int main(int argc, char *argv[])
 					foundGeometrySpec = true;
 					break;
 				case 'g': {
+						// Set defaults
+						if (!foundGeometrySpec) {
+							if (long_options[option_index].name[0] == 'g') {
+								// Compatibility when using the option 'geometry'
+								generator.setBlockGeometry(true);
+								generator.setShrinkGeometry(true);
+							}
+							else {
+								generator.setBlockGeometry(false);
+								generator.setShrinkGeometry(false);
+							}
+							setFixedOrShrinkGeometry = true;
+						}
+						if (!setFixedOrShrinkGeometry) {
+							// Special treatement is needed, because:
+							// - without any -[...]geometry option, default is shrink
+							// - with    any -[...]geometry option, default is fixed
+							generator.setShrinkGeometry(false);
+							setFixedOrShrinkGeometry = true;
+						}
+
 						istringstream iss;
 						iss.str(optarg);
 						int p1, p2, p3, p4;
@@ -311,12 +336,6 @@ int main(int argc, char *argv[])
 							generator.setGeometry(p1, p2, p3, p4);
 						if (c == 'x')
 							generator.setGeometry(p3, p4, p1, p2);
-
-						if (!foundGeometrySpec && long_options[option_index].name[0] == 'g') {
-							// Compatibility when using the option 'geometry'
-							generator.setBlockGeometry(true);
-							generator.setShrinkGeometry(true);
-						}
 						foundGeometrySpec = true;
 					}
 					break;
