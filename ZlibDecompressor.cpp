@@ -49,7 +49,7 @@ ustring ZlibDecompressor::decompress()
 	strm.avail_in = size;
 
 	if (inflateInit(&strm) != Z_OK) {
-		throw DecompressError();
+		throw DecompressError(strm.msg);
 	}
 
 	strm.next_in = const_cast<unsigned char *>(data);
@@ -61,7 +61,7 @@ ustring ZlibDecompressor::decompress()
 		buffer += ustring(reinterpret_cast<unsigned char *>(temp_buffer), BUFSIZE - strm.avail_out);
 	} while (ret == Z_OK);
 	if (ret != Z_STREAM_END) {
-		throw DecompressError();
+		throw DecompressError(strm.msg);
 	}
 	m_seekPos += strm.next_in - data;
 	(void)inflateEnd(&strm);

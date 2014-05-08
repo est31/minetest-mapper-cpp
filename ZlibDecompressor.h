@@ -18,7 +18,9 @@
 class ZlibDecompressor
 {
 public:
-	class DecompressError {
+	struct DecompressError {
+		DecompressError(std::string m = "(unknown error)") : message(m) {}
+		const std::string message;
 	};
 
 	ZlibDecompressor(const unsigned char *data, std::size_t size);

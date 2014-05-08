@@ -15,6 +15,7 @@
 #include <sstream>
 #include <stdexcept>
 #include "TileGenerator.h"
+#include "ZlibDecompressor.h"
 
 using namespace std;
 
@@ -378,6 +379,9 @@ int main(int argc, char *argv[])
 		generator.generate(input, output);
 	} catch(std::runtime_error e) {
 		std::cout<<"Exception: "<<e.what()<<std::endl;
+		return 1;
+	} catch(ZlibDecompressor::DecompressError e) {
+		std::cout<<"Block decompression failure: "<<e.message<<std::endl;
 		return 1;
 	}
 	return 0;
