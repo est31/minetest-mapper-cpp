@@ -217,11 +217,16 @@ int main(int argc, char *argv[])
 					generator.setDrawScale(true);
 					break;
 				case 'v':
-					generator.verboseStatistics = true;
-					generator.verboseCoordinates = 1;
-					if (optarg) {
-						if (optarg[0] >= '2')
-							generator.verboseCoordinates = 2;
+					if (optarg && isdigit(optarg[0]) && optarg[1] == '\0') {
+						if (optarg[0] == '0')
+							generator.verboseStatistics = false;
+						else
+							generator.verboseStatistics = true;
+						generator.verboseCoordinates = optarg[0] - '0';
+					}
+					else {
+						generator.verboseStatistics = true;
+						generator.verboseCoordinates = 1;
 					}
 					break;
 				case 'e':
