@@ -155,6 +155,7 @@ int main(int argc, char *argv[])
 		{"tilebordercolor", required_argument, 0, 'B'},
 		{"verbose", optional_argument, 0, 'v'},
 		{"progress", no_argument, 0, OPT_PROGRESS_INDICATOR},
+		{NULL, 0, 0, 0}
 	};
 
 	string input;
