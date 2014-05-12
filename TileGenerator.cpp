@@ -26,6 +26,9 @@
 #if USE_LEVELDB
 #include "db-leveldb.h"
 #endif
+#if USE_REDIS
+#include "db-redis.h"
+#endif
 
 using namespace std;
 
@@ -383,6 +386,10 @@ void TileGenerator::openDb(const std::string &input)
 #if USE_LEVELDB
 	else if(m_backend == "leveldb")
 		m_db = new DBLevelDB(input);
+#endif
+#if USE_REDIS
+	else if(m_backend == "redis")
+		m_db = new DBRedis(input);
 #endif
 	else
 		throw std::runtime_error(((std::string) "Unknown map backend: ") + m_backend);

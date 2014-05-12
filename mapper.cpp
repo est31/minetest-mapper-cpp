@@ -44,7 +44,7 @@ void usage()
 			"  --noshading\n"
 			"  --min-y <y>\n"
 			"  --max-y <y>\n"
-			"  --backend <sqlite3/leveldb>\n"
+			"  --backend <sqlite3/leveldb/redis>\n"
 			"  --geometry <geometry>\n"
 			"  --cornergeometry <geometry>\n"
 			"  --centergeometry <geometry>\n"

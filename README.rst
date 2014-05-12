@@ -9,6 +9,7 @@ Requirements
 * libgd
 * sqlite3
 * leveldb (optional, set ENABLE_LEVELDB=1 in CMake to enable leveldb support)
+* hiredis (optional, set ENABLE_REDIS=1 in CMake to enable redis support)
 
 Compilation
 -----------
@@ -20,11 +21,11 @@ Plain:
     cmake .
     make
 
-With levelDB support:
+With levelDB and Redis support:
 
 ::
 
-    cmake -DENABLE_LEVELDB=true .
+    cmake -DENABLE_LEVELDB=true -DENABLE_REDIS=true .
     make
 
 Debug version:
@@ -122,7 +123,7 @@ max-y:
     Don't draw nodes above this y value, `--max-y 75`
 
 backend:
-    Use specific map backend, supported: sqlite3, leveldb, `--backend leveldb`
+    Use specific map backend, supported: sqlite3, leveldb, redis, `--backend leveldb`
 
 geometry <geometry>:
     (see below, under 'centergeometry')
