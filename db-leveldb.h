@@ -16,7 +16,6 @@ public:
 	~DBLevelDB();
 private:
 	int m_blocksReadCount;
-	int m_blocksCachedCount;
 	int m_blocksUnCachedCount;
 	leveldb::DB *m_db;
 	BlockPosList m_blockPosList;
