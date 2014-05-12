@@ -645,10 +645,8 @@ void TileGenerator::pushPixelRows(int zPosLimit) {
 				m_image->tpixels[mapY2ImageY(mapY)][mapX2ImageX(mapX)] = pixel.color().to_libgd();
 		}
 	}
-	m_nextStoredYCoord = y;
-	m_blockPixelAttributes.scroll(y);
 	int yLimit = worldBlockZ2StoredY(zPosLimit);
-	if (y < yLimit) {
+	if (y <= yLimit) {
 		m_blockPixelAttributes.scroll(yLimit);
 		m_nextStoredYCoord = yLimit;
 	}
@@ -843,8 +841,7 @@ void TileGenerator::renderMap()
 		if (currentPos.x != pos.x || currentPos.z != pos.z) {
 			area_rendered++;
 			if (currentPos.z != pos.z) {
-				if (currentPos.z != INT_MIN)
-					pushPixelRows(pos.z);
+				pushPixelRows(pos.z);
 				m_blockPixelAttributes.setLastY((m_zMax - pos.z) * 16 + 15);
 				if (progressIndicator)
 				    cout << "Processing Z-coordinate: " << std::setw(5) << pos.z*16 << "\r" << std::flush;

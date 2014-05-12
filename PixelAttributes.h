@@ -50,7 +50,7 @@ public:
 	void scroll(int keepY);
 	PixelAttribute &attribute(int y, int x);
 	void renderShading(bool drawAlpha);
-	void setLastY(int y) { m_lastY = y; }
+	void setLastY(int y);
 	int getLastY(void) { return m_lastY; }
 
 private:
@@ -70,6 +70,17 @@ private:
 	int m_firstUnshadedY;
 };
 
+inline void PixelAttributes::setLastY(int y)
+{
+#ifdef DEBUG
+	assert(y - m_firstY <= m_lastLine - m_firstLine);
+#else
+	if (y - m_firstY > m_lastLine - m_firstLine)
+		// Not sure whether this will actually avoid a crash...
+		y = m_firstY + (m_lastLine - m_firstLine);
+#endif
+	m_lastY = y;
+}
 
 inline PixelAttribute &PixelAttributes::attribute(int y, int x)
 {
