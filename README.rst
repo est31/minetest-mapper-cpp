@@ -70,6 +70,17 @@ colors <file>:
     * For compatibility, in the current directory as a last resort.
       This causes a warning message to be printed.
 
+    If the colors file contains duplicate entries for the same node,
+    one with alpha = 255, or absent, and one with alpha < 255, the former
+    is used without 'drawalpha', and the latter is used with 'drawalpha':
+
+::
+
+    # Entry that is used without 'drawalpha':
+    default:water-source	39 66 106
+    # Entry that is used with 'drawalpha':
+    default:water-source	78 132 212 64 224
+
 bgcolor:
     Background color of image, `--bgcolor #ffffff`
 

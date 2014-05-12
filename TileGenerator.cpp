@@ -344,6 +344,28 @@ void TileGenerator::parseColorsStream(std::istream &in, const std::string &filen
 		t = 0;
 		iline >> t;
 		color = ColorEntry(r,g,b,a,t);
+		if ((m_drawAlpha && a == 0xff) || (!m_drawAlpha && a != 0xff)) {
+			// If drawing alpha, and the colors file contains both
+			// an opaque entry and a non-opaque entry for a name, prefer
+			// the non-opaque entry
+			// If not drawing alpha, and the colors file contains both
+			// an opaque entry and a non-opaque entry for a name, prefer
+			// the opaque entry
+			// Otherwise, any later entry overrides any previous entry
+			ColorMap::iterator it = m_colors.find(name);
+			if (it != m_colors.end()) {
+				if (m_drawAlpha && (a == 0xff && it->second.a != 0xff)) {
+					// drawing alpha: don't use opaque color to override
+					// non-opaque color
+					continue;
+				}
+				if (!m_drawAlpha && (a != 0xff && it->second.a == 0xff)) {
+					// not drawing alpha: don't use non-opaque color to
+					// override opaque color
+					continue;
+				}
+			}
+		}
 		m_colors[name] = color;
 	}
 	if (!in.eof()) {
