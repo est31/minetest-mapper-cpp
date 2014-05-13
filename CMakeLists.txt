@@ -90,21 +90,42 @@ endif(NOT ZLIB_LIBRARY OR NOT ZLIB_INCLUDE_DIR)
 find_package(PkgConfig)
 include(FindPackageHandleStandardArgs)
 
-# Find libsqlite3
-find_library(SQLITE3_LIBRARY sqlite3)
-find_path(SQLITE3_INCLUDE_DIR zlib.h)
-message (STATUS "sqlite3 library: ${SQLITE3_LIBRARY}")
-message (STATUS "sqlite3 headers: ${SQLITE3_INCLUDE_DIR}")
-if(NOT SQLITE3_LIBRARY OR NOT SQLITE3_INCLUDE_DIR)
-	message(FATAL_ERROR "sqlite3 not found!")
-endif(NOT SQLITE3_LIBRARY OR NOT SQLITE3_INCLUDE_DIR)
+# Find database(s)
+set(USE_SQLITE3 0)
+set(USE_LEVELDB 0)
+set(USE_REDIS 0)
+
+OPTION(ENABLE_ANY_DATABASE "Enable any available database backends")
+OPTION(ENABLE_SQLITE3 "Enable sqlite3 backend" True)
+OPTION(ENABLE_LEVELDB "Enable LevelDB backend")
+OPTION(ENABLE_REDIS "Enable redis backend")
+
+MACRO(backend_message IS_FATAL text)
+	if(S_FATAL)
+		message(FATAL_ERROR text)
+	else(IS_FATAL)
+		message(STATUS text)
+	endif(IS_FATAL)
+ENDMACRO(backend_message)
+
+# Find sqlite3
+if(ENABLE_SQLITE3 OR ENABLE_ANY_DATABASE)
+	find_library(SQLITE3_LIBRARY sqlite3)
+	find_path(SQLITE3_INCLUDE_DIR zlib.h)
+	message (STATUS "sqlite3 library: ${SQLITE3_LIBRARY}")
+	message (STATUS "sqlite3 headers: ${SQLITE3_INCLUDE_DIR}")
+	if(SQLITE3_LIBRARY AND SQLITE3_INCLUDE_DIR)
+		set(USE_SQLITE3 1)
+		message(STATUS "sqlite3 backend enabled")
+		include_directories(${SQLITE3_INCLUDE_DIR})
+	else(SQLITE3_LIBRARY AND SQLITE3_INCLUDE_DIR)
+		set(USE_SQLITE3 0)
+		backend_message((NOT ENABLE_ANY_DATABASE) "sqlite3 backend requested but sqlite3 libraries not found!")
+	endif(SQLITE3_LIBRARY AND SQLITE3_INCLUDE_DIR)
+endif(ENABLE_SQLITE3 OR ENABLE_ANY_DATABASE)
 
 # Find leveldb
-set(USE_LEVELDB 0)
-
-OPTION(ENABLE_LEVELDB "Enable LevelDB backend")
-
-if(ENABLE_LEVELDB)
+if(ENABLE_LEVELDB OR ENABLE_ANY_DATABASE)
 	find_library(LEVELDB_LIBRARY leveldb)
 	find_path(LEVELDB_INCLUDE_DIR db.h PATH_SUFFIXES leveldb)
 	message (STATUS "LevelDB library: ${LEVELDB_LIBRARY}")
@@ -115,16 +136,12 @@ if(ENABLE_LEVELDB)
 		include_directories(${LEVELDB_INCLUDE_DIR})
 	else(LEVELDB_LIBRARY AND LEVELDB_INCLUDE_DIR)
 		set(USE_LEVELDB 0)
-		message(STATUS "LevelDB not found!")
+		backend_message((NOT ENABLE_ANY_DATABASE) "LevelDB backend requested but LevelDB libraries not found!")
 	endif(LEVELDB_LIBRARY AND LEVELDB_INCLUDE_DIR)
-endif(ENABLE_LEVELDB)
+endif(ENABLE_LEVELDB OR ENABLE_ANY_DATABASE)
 
 # Find redis
-set(USE_REDIS 0)
-
-OPTION(ENABLE_REDIS "Enable redis backend")
-
-if(ENABLE_REDIS)
+if(ENABLE_REDIS OR ENABLE_ANY_DATABASE)
 	find_library(REDIS_LIBRARY hiredis)
 	find_path(REDIS_INCLUDE_DIR hiredis.h PATH_SUFFIXES hiredis)
 	message (STATUS "redis library: ${REDIS_LIBRARY}")
@@ -135,15 +152,18 @@ if(ENABLE_REDIS)
 		include_directories(${REDIS_INCLUDE_DIR})
 	else(REDIS_LIBRARY AND REDIS_INCLUDE_DIR)
 		set(USE_REDIS 0)
-		message(STATUS "redis not found!")
+		backend_message((NOT ENABLE_ANY_DATABASE) "redis backend requested but redis libraries not found!")
 	endif(REDIS_LIBRARY AND REDIS_INCLUDE_DIR)
-endif(ENABLE_REDIS)
+endif(ENABLE_REDIS OR ENABLE_ANY_DATABASE)
+
+if(NOT ENABLE_SQLITE3 AND NOT ENABLE_LEVELDB AND NOT ENABLE_REDIS)
+	message(FATAL_ERROR "No database backends are configured, or none could be found")
+endif(NOT ENABLE_SQLITE3 AND NOT ENABLE_LEVELDB AND NOT ENABLE_REDIS)
 
 include_directories(
 	"${PROJECT_BINARY_DIR}"
 	"${CMAKE_CURRENT_SOURCE_DIR}"
 	"${CMAKE_CURRENT_BINARY_DIR}"
-	${SQLITE3_INCLUDE_DIR}
 	${LIBGD_INCLUDE_DIR}
 	${ZLIB_INCLUDE_DIR}
 )
@@ -161,8 +181,11 @@ set(mapper_SRCS
 	ZlibDecompressor.cpp
 	Color.cpp
 	mapper.cpp
-	db-sqlite3.cpp
 )
+
+if(USE_SQLITE3)
+	set(mapper_SRCS ${mapper_SRCS} db-sqlite3.cpp)
+endif(USE_SQLITE3)
 
 if(USE_LEVELDB)
 	set(mapper_SRCS ${mapper_SRCS} db-leveldb.cpp)

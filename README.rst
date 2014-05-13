@@ -7,7 +7,7 @@ Requirements
 ------------
 
 * libgd
-* sqlite3
+* sqlite3 (enabled by default, set ENABLE_SQLITE3=0 in CMake to disable)
 * leveldb (optional, set ENABLE_LEVELDB=1 in CMake to enable leveldb support)
 * hiredis (optional, set ENABLE_REDIS=1 in CMake to enable redis support)
 
@@ -41,7 +41,6 @@ Release version:
 
     cmake -DCMAKE_BUILD_TYPE:STRING=Release .
     make
-
 
 Usage
 -----

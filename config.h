@@ -23,3 +23,43 @@
 #else
 #define USE_LEVELDB 0
 #endif
+
+// List of possible database names (for usage message)
+#if USE_SQLITE3
+#define USAGE_NAME_SQLITE "sqlite3"
+#else
+#define USAGE_NAME_SQLITE
+#endif
+#if USE_SQLITE3 && USE_LEVELDB
+#define USAGE_SEP_SQLITE_LEVELDB "/"
+#else
+#define USAGE_SEP_SQLITE_LEVELDB
+#endif
+#if USE_LEVELDB
+#define USAGE_NAME_LEVELDB "leveldb"
+#else
+#define USAGE_NAME_LEVELDB
+#endif
+#if USE_LEVELDB && USE_REDIS
+#define USAGE_SEP_LEVELDB_REDIS "/"
+#else
+#define USAGE_SEP_LEVELDB_REDIS
+#endif
+#if USE_REDIS
+#define USAGE_NAME_REDIS "redis"
+#else
+#define USAGE_NAME_REDIS
+#endif
+#define USAGE_DATABASES USAGE_NAME_SQLITE USAGE_SEP_SQLITE_LEVELDB USAGE_NAME_LEVELDB USAGE_SEP_LEVELDB_REDIS USAGE_NAME_REDIS
+
+// default database to use
+#if USE_SQLITE3
+#define DEFAULT_BACKEND "sqlite3"
+#elif USE_LEVELDB
+#define DEFAULT_BACKEND "leveldb"
+#elif USE_REDIS
+#define DEFAULT_BACKEND "redis"
+#else
+#error No database backends configured !
+#endif
+

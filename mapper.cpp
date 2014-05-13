@@ -44,12 +44,14 @@ void usage()
 			"  --noshading\n"
 			"  --min-y <y>\n"
 			"  --max-y <y>\n"
-			"  --backend <sqlite3/leveldb/redis>\n"
+			"  --backend <" USAGE_DATABASES ">\n"
 			"  --geometry <geometry>\n"
 			"  --cornergeometry <geometry>\n"
 			"  --centergeometry <geometry>\n"
 			"  --geometrymode pixel,block,fixed,shrink\n"
+#if USE_SQLITE3
 			"  --sqlite-cacheworldrow\n"
+#endif
 			"  --tiles <tilesize>[+<border>]\n"
 			"  --tileorigin <x>,<y>|center-world|center-map\n"
 			"  --verbose[=n]\n"

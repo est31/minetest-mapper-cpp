@@ -22,7 +22,9 @@
 #include "PlayerAttributes.h"
 #include "TileGenerator.h"
 #include "ZlibDecompressor.h"
+#if USE_SQLITE3
 #include "db-sqlite3.h"
+#endif
 #if USE_LEVELDB
 #include "db-leveldb.h"
 #endif
@@ -93,7 +95,7 @@ TileGenerator::TileGenerator():
 	m_drawAlpha(false),
 	m_shading(true),
 	m_border(0),
-	m_backend("sqlite3"),
+	m_backend(DEFAULT_BACKEND),
 	m_shrinkGeometry(true),
 	m_blockGeometry(false),
 	m_sqliteCacheWorldRow(false),
@@ -378,11 +380,15 @@ void TileGenerator::parseColorsStream(std::istream &in, const std::string &filen
 
 void TileGenerator::openDb(const std::string &input)
 {
-	if(m_backend == "sqlite3") {
+	if (false) {
+	}
+#if USE_SQLITE3
+	else if(m_backend == "sqlite3") {
 		DBSQLite3 *db;
 		m_db = db = new DBSQLite3(input);
 		db->cacheWorldRow = m_sqliteCacheWorldRow;
 	}
+#endif
 #if USE_LEVELDB
 	else if(m_backend == "leveldb")
 		m_db = new DBLevelDB(input);
