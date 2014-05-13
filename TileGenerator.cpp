@@ -326,6 +326,7 @@ void TileGenerator::parseColorsFile(const std::string &fileName)
 		return;
 	}
 	parseColorsStream(in, fileName.c_str());
+	in.close();
 }
 
 void TileGenerator::setBackend(std::string backend)
