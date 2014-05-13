@@ -54,9 +54,45 @@ static inline int unsignedToSigned(long i, long max_positive)
 	}
 }
 
-static inline uint16_t readU16(const unsigned char *data)
+static inline void checkDataLimit(const char *type, size_t offset, size_t length, size_t dataLength)
 {
-	return data[0] << 8 | data[1];
+	if (offset + length > dataLength)
+		throw TileGenerator::UnpackError(type, offset, length, dataLength);
+}
+
+static inline uint8_t readU8(const unsigned char *data, size_t offset, size_t dataLength)
+{
+	checkDataLimit("uint8", offset, 1, dataLength);
+	return data[offset];
+}
+
+static inline uint16_t readU16(const unsigned char *data, size_t offset, size_t dataLength)
+{
+	checkDataLimit("uint16", offset, 2, dataLength);
+	return data[offset] << 8 | data[offset + 1];
+}
+
+static inline void readString(string &str, const unsigned char *data, size_t offset, size_t length, size_t dataLength)
+{
+	checkDataLimit("string", offset, length, dataLength);
+	str = string(reinterpret_cast<const char *>(data) + offset, length);
+}
+
+static inline void checkBlockNodeDataLimit(int version, size_t dataLength)
+{
+	int datapos = 16 * 16 * 16;
+	if (version >= 24) {
+		size_t index = datapos << 1;
+		checkDataLimit("node:24", index, 2, dataLength);
+	}
+	else if (version >= 20) {
+		checkDataLimit("node:20", datapos + 0x2000, 1, dataLength);
+	}
+	else {
+		std::ostringstream oss;
+		oss << "Unsupported map version " << version;
+		throw std::runtime_error(oss.str());
+	}
 }
 
 static inline int readBlockContent(const unsigned char *mapData, int version, int datapos)
@@ -892,8 +928,100 @@ void TileGenerator::createImage()
 	}
 }
 
+void TileGenerator::processMapBlock(const DB::Block &block)
+{
+	const BlockPos &pos = block.first;
+	const unsigned char *data = block.second.c_str();
+	size_t length = block.second.length();
+
+	uint8_t version = readU8(data, 0, length);
+	//uint8_t flags = readU8(data, 1, length);
+
+	size_t dataOffset = 0;
+	if (version >= 22) {
+		dataOffset = 4;
+	}
+	else {
+		dataOffset = 2;
+	}
+
+	// Zlib header: 2; Deflate header: >=1
+	checkDataLimit("zlib", dataOffset, 3, length);
+	ZlibDecompressor decompressor(data, length);
+	decompressor.setSeekPos(dataOffset);
+	ustring mapData = decompressor.decompress();
+	ustring mapMetadata = decompressor.decompress();
+	dataOffset = decompressor.seekPos();
+
+	// Skip unused data
+	if (version <= 21) {
+		dataOffset += 2;
+	}
+	if (version == 23) {
+		dataOffset += 1;
+	}
+	if (version == 24) {
+		uint8_t ver = readU8(data, dataOffset++, length);
+		if (ver == 1) {
+			uint16_t num = readU16(data, dataOffset, length);
+			dataOffset += 2;
+			dataOffset += 10 * num;
+		}
+	}
+
+	// Skip unused static objects
+	dataOffset++; // Skip static object version
+	int staticObjectCount = readU16(data, dataOffset, length);
+	dataOffset += 2;
+	for (int i = 0; i < staticObjectCount; ++i) {
+		dataOffset += 13;
+		uint16_t dataSize = readU16(data, dataOffset, length);
+		dataOffset += dataSize + 2;
+	}
+	dataOffset += 4; // Skip timestamp
+
+	m_blockAirId = -1;
+	m_blockIgnoreId = -1;
+	// Read mapping
+	if (version >= 22) {
+		dataOffset++; // mapping version
+		uint16_t numMappings = readU16(data, dataOffset, length);
+		dataOffset += 2;
+		for (int i = 0; i < numMappings; ++i) {
+			uint16_t nodeId = readU16(data, dataOffset, length);
+			dataOffset += 2;
+			uint16_t nameLen = readU16(data, dataOffset, length);
+			dataOffset += 2;
+			string name;
+			readString(name, data, dataOffset, nameLen, length);
+			name = name.c_str();		// Truncate any trailing NUL bytes
+			if (name == "air") {
+				m_blockAirId = nodeId;
+			}
+			else if (name == "ignore") {
+				m_blockIgnoreId = nodeId;
+			}
+			else {
+				m_nameMap[nodeId] = name;
+			}
+			dataOffset += nameLen;
+		}
+	}
+
+	// Node timers
+	if (version >= 25) {
+		dataOffset++;
+		uint16_t numTimers = readU16(data, dataOffset, length);
+		dataOffset += 2;
+		dataOffset += numTimers * 10;
+	}
+
+	renderMapBlock(mapData, pos, version);
+}
+
 void TileGenerator::renderMap()
 {
+	int unpackErrors = 0;
 	int blocks_rendered = 0;
 	int area_rendered = 0;
 	BlockPos currentPos;
@@ -922,102 +1050,44 @@ void TileGenerator::renderMap()
 		}
 		DB::Block block = m_db->getBlockOnPos(pos);
 		if (!block.second.empty()) {
-			const unsigned char *data = block.second.c_str();
-			size_t length = block.second.length();
+			try {
+				processMapBlock(block);
 
-			uint8_t version = data[0];
-			//uint8_t flags = data[1];
+				blocks_rendered++;
 
-			size_t dataOffset = 0;
-			if (version >= 22) {
-				dataOffset = 4;
-			}
-			else {
-				dataOffset = 2;
-			}
-
-			ZlibDecompressor decompressor(data, length);
-			decompressor.setSeekPos(dataOffset);
-			ustring mapData = decompressor.decompress();
-			ustring mapMetadata = decompressor.decompress();
-			dataOffset = decompressor.seekPos();
-
-			// Skip unused data
-			if (version <= 21) {
-				dataOffset += 2;
-			}
-			if (version == 23) {
-				dataOffset += 1;
-			}
-			if (version == 24) {
-				uint8_t ver = data[dataOffset++];
-				if (ver == 1) {
-					uint16_t num = readU16(data + dataOffset);
-					dataOffset += 2;
-					dataOffset += 10 * num;
+				allReaded = true;
+				for (int i = 0; i < 16; ++i) {
+					if (m_readedPixels[i] != 0xffff) {
+						allReaded = false;
+					}
 				}
 			}
-
-			// Skip unused static objects
-			dataOffset++; // Skip static object version
-			int staticObjectCount = readU16(data + dataOffset);
-			dataOffset += 2;
-			for (int i = 0; i < staticObjectCount; ++i) {
-				dataOffset += 13;
-				uint16_t dataSize = readU16(data + dataOffset);
-				dataOffset += dataSize + 2;
+			catch (UnpackError &e) {
+				std::cerr << "Failed to unpack map block " << pos.x << "," << pos.y << "," << pos.z
+					<< " (id: " << pos.databasePos() << "). Block corrupt ?"
+					<< std::endl
+					<< "\tCoordinates: " << pos.x*16 << "," << pos.y*16 << "," << pos.z*16 << "+16+16+16"
+					<< ";  Data: " << e.type << " at: " << e.offset << "(+" << e.length <<  ")/" << e.dataLength
+					<< std::endl;
+				unpackErrors++;
 			}
-			dataOffset += 4; // Skip timestamp
-
-			m_blockAirId = -1;
-			m_blockIgnoreId = -1;
-			// Read mapping
-			if (version >= 22) {
-				dataOffset++; // mapping version
-				uint16_t numMappings = readU16(data + dataOffset);
-				dataOffset += 2;
-				for (int i = 0; i < numMappings; ++i) {
-					uint16_t nodeId = readU16(data + dataOffset);
-					dataOffset += 2;
-					uint16_t nameLen = readU16(data + dataOffset);
-					dataOffset += 2;
-					string name = string(reinterpret_cast<const char *>(data) + dataOffset, nameLen);
-					name = name.c_str();		// Truncate any trailing NUL bytes
-					if (name == "air") {
-						m_blockAirId = nodeId;
-					}
-					else if (name == "ignore") {
-						m_blockIgnoreId = nodeId;
-					}
-					else {
-						m_nameMap[nodeId] = name;
-					}
-					dataOffset += nameLen;
-				}
+			catch (ZlibDecompressor::DecompressError &e) {
+				std::cerr << "Failed to decompress data in map block " << pos.x << "," << pos.y << "," << pos.z
+					<< " (id: " << pos.databasePos() << "). Block corrupt ?"
+					<< std::endl
+					<< "\tCoordinates: " << pos.x*16 << "," << pos.y*16 << "," << pos.z*16 << "+16+16+16"
+					<< ";  Cause: " << e.message
+					<< std::endl;
+				unpackErrors++;
 			}
-
-			// Node timers
-			if (version >= 25) {
-				dataOffset++;
-				uint16_t numTimers = readU16(data + dataOffset);
-				dataOffset += 2;
-				dataOffset += numTimers * 10;
-			}
-
-			renderMapBlock(mapData, pos, version);
-			blocks_rendered++;
-
-			allReaded = true;
-			for (int i = 0; i < 16; ++i) {
-				if (m_readedPixels[i] != 0xffff) {
-					allReaded = false;
-				}
-			}
+		}
+		if (unpackErrors >= 100) {
+			throw(std::runtime_error("Too many block unpacking errors - bailing out"));
 		}
 	}
 	if (currentPos.z != INT_MIN)
 		pushPixelRows(currentPos.z - 1);
-	if (verboseStatistics)
+	if (verboseStatistics) {
 		cout << "Statistics"
 		     << ":  blocks read: " << m_db->getBlocksReadCount()
 		     << "  (" << m_db->getBlocksCachedCount() << " cached + "
@@ -1025,14 +1095,18 @@ void TileGenerator::renderMap()
 		     << ";  blocks rendered: " << blocks_rendered
 		     << ";  area rendered: " << area_rendered
 		     << "/" << (m_xMax-m_xMin+1) * (m_zMax-m_zMin+1)
-		     << "  (" << (long long)area_rendered*16*16 << " nodes)"
-		     << std::endl;
+		     << "  (" << (long long)area_rendered*16*16 << " nodes)";
+		if (unpackErrors)
+			cout << "  (" << unpackErrors << " errors)";
+		 cout << std::endl;
+	}
 	else if (progressIndicator)
 		cout << std::setw(40) << "" << "\r";
 }
 
 inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPos &pos, int version)
 {
+	checkBlockNodeDataLimit(version, mapBlock.length());
 	int xBegin = worldBlockX2StoredX(pos.x);
 	int zBegin = worldBlockZ2StoredY(pos.z);
 	const unsigned char *mapData = mapBlock.c_str();

@@ -44,6 +44,16 @@ private:
 #endif
 
 public:
+	struct UnpackError
+	{
+		BlockPos pos;
+		const char *type;
+		size_t offset;
+		size_t length;
+		size_t dataLength;
+		UnpackError(const char *t, size_t o, size_t l, size_t dl) : type(t), offset(o), length(l), dataLength(dl) {}
+	};
+
 	TileGenerator();
 	~TileGenerator();
 	void setBgColor(const Color &bgColor);
@@ -98,6 +108,7 @@ private:
 	void renderMap();
 	std::list<int> getZValueList() const;
 	void pushPixelRows(int zPosLimit);
+	void processMapBlock(const DB::Block &block);
 	void renderMapBlock(const ustring &mapBlock, const BlockPos &pos, int version);
 	void renderScale();
 	void renderOrigin();
