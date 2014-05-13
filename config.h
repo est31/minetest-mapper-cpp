@@ -21,45 +21,44 @@
 #ifdef USE_CMAKE_CONFIG_H
 #include "cmake_config.h"
 #else
+#define USE_SQLITE3 1
 #define USE_LEVELDB 0
+#define USE_REDIS 0
 #endif
 
 // List of possible database names (for usage message)
 #if USE_SQLITE3
-#define USAGE_NAME_SQLITE "sqlite3"
+#define USAGE_NAME_SQLITE "/sqlite3"
 #else
 #define USAGE_NAME_SQLITE
 #endif
-#if USE_SQLITE3 && USE_LEVELDB
-#define USAGE_SEP_SQLITE_LEVELDB "/"
-#else
-#define USAGE_SEP_SQLITE_LEVELDB
-#endif
+
 #if USE_LEVELDB
-#define USAGE_NAME_LEVELDB "leveldb"
+#define USAGE_NAME_LEVELDB "/leveldb"
 #else
 #define USAGE_NAME_LEVELDB
 #endif
-#if USE_LEVELDB && USE_REDIS
-#define USAGE_SEP_LEVELDB_REDIS "/"
-#else
-#define USAGE_SEP_LEVELDB_REDIS
-#endif
+
 #if USE_REDIS
-#define USAGE_NAME_REDIS "redis"
+#define USAGE_NAME_REDIS "/redis"
 #else
 #define USAGE_NAME_REDIS
 #endif
-#define USAGE_DATABASES USAGE_NAME_SQLITE USAGE_SEP_SQLITE_LEVELDB USAGE_NAME_LEVELDB USAGE_SEP_LEVELDB_REDIS USAGE_NAME_REDIS
+
+#define USAGE_DATABASES "auto" USAGE_NAME_SQLITE USAGE_NAME_LEVELDB USAGE_NAME_REDIS
+
+#if !USE_SQLITE3 && !USE_LEVELDB && !USE_REDIS
+#error No database backends configured !
+#endif
 
 // default database to use
-#if USE_SQLITE3
+#if USE_SQLITE3 && !USE_LEVELDB && !USE_REDIS
 #define DEFAULT_BACKEND "sqlite3"
-#elif USE_LEVELDB
+#elif !USE_SQLITE3 && USE_LEVELDB && !USE_REDIS
 #define DEFAULT_BACKEND "leveldb"
-#elif USE_REDIS
+#elif !USE_SQLITE3 && !USE_LEVELDB && USE_REDIS
 #define DEFAULT_BACKEND "redis"
 #else
-#error No database backends configured !
+#define DEFAULT_BACKEND "auto"
 #endif
 

@@ -122,7 +122,10 @@ max-y:
     Don't draw nodes above this y value, `--max-y 75`
 
 backend:
-    Use specific map backend, supported: sqlite3, leveldb, redis, `--backend leveldb`
+    Use specific map backend, supported: auto, sqlite3, leveldb, redis, `--backend leveldb`
+
+    By default, the backend is 'auto', i.e. it is determined from the backend
+    setting in the world's world.mt file (if found).
 
 geometry <geometry>:
     (see below, under 'centergeometry')
