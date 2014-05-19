@@ -676,7 +676,7 @@ int main(int argc, char *argv[])
 						if (!foundGeometrySpec)
 							generator.setBlockGeometry(true);
 					}
-					else {
+					else if (optarg && *optarg) {
 						for (char *c = optarg; *c; c++)
 							if (*c == ',') *c = ' ';
 						istringstream iss;
