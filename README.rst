@@ -318,5 +318,7 @@ verbose:
 
     * number of blocks: in the world, and in the map area.
 
+    Using `--verbose=2`, report some more statistics, including:
+
     * database access statistics.
 
