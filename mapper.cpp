@@ -85,7 +85,8 @@ void usage()
 			"  --sqlite-cacheworldrow\n"
 #endif
 			"  --tiles <tilesize>[+<border>]\n"
-			"  --tileorigin <x>,<y>|center-world|center-map\n"
+			"  --tileorigin <x>,<y>|world|map\n"
+			"  --tilecenter <x>,<y>|world|map\n"
 			"  --verbose[=n]\n"
 			"  --progress\n"
 			"Color formats:\n"
@@ -514,6 +515,7 @@ int main(int argc, char *argv[])
 		{"sqlite-cacheworldrow", no_argument, 0, OPT_SQLITE_CACHEWORLDROW},
 		{"tiles", required_argument, 0, 't'},
 		{"tileorigin", required_argument, 0, 'T'},
+		{"tilecenter", required_argument, 0, 'T'},
 		{"tilebordercolor", required_argument, 0, 'B'},
 		{"verbose", optional_argument, 0, 'v'},
 		{"progress", no_argument, 0, OPT_PROGRESS_INDICATOR},
@@ -643,24 +645,40 @@ int main(int argc, char *argv[])
 					}
 					break;
 				case 'T': {
-						istringstream origin;
-						origin.str(optarg);
+						bool origin = long_options[option_index].name[4] == 'o';
+						istringstream iss;
+						iss.str(optarg);
 						NodeCoord coord;
-						if (parseCoordinates(origin, coord, 2, 0, ',')) {
-							convertBlockToNodeCoordinates(coord, 8, 2);
-							generator.setTileOrigin(coord.x, coord.y);
+						if (iss.str() == "world") {
+							if (origin)
+								generator.setTileOrigin(TILE_AT_WORLDCENTER, TILE_AT_WORLDCENTER);
+							else
+								generator.setTileCenter(TILE_WORLDCENTERED, TILE_WORLDCENTERED);
 						}
-						else if (origin.str(optarg), parseCoordinates(origin, coord, 2, 0, ':')) {
-							convertBlockToNodeCoordinates(coord, 8, 2);
-							generator.setTileOrigin(coord.x, coord.y);
+						else if (iss.str() == "map") {
+							if (origin)
+								generator.setTileOrigin(TILE_AT_MAPCENTER, TILE_AT_MAPCENTER);
+							else
+								generator.setTileCenter(TILE_MAPCENTERED, TILE_MAPCENTERED);
 						}
 						else {
-							if (string("center-world") == optarg)
-								generator.setTileOrigin(TILECENTER_IS_WORLDCENTER, TILECENTER_IS_WORLDCENTER);
-							else if (string("center-map") == optarg)
-								generator.setTileOrigin(TILECENTER_IS_MAPCENTER, TILECENTER_IS_MAPCENTER);
+							bool result = true;
+							if (!parseCoordinates(iss, coord, 2, 0, ',')) {
+								iss.str(optarg);
+								result = parseCoordinates(iss, coord, 2, 0, ':');
+							}
+							if (result) {
+								if (origin) {
+									convertBlockToNodeCoordinates(coord, 0, 2);
+									generator.setTileOrigin(coord.x, coord.y);
+								}
+								else {
+									convertBlockToNodeCoordinates(coord, 8, 2);
+									generator.setTileCenter(coord.x, coord.y);
+								}
+							}
 							else {
-								std::cerr << "Invalid tile origin specification (" << optarg << ")" << std::endl;
+								std::cerr << "Invalid " << long_options[option_index].name << " parameter (" << optarg << ")" << std::endl;
 								usage();
 								exit(1);
 							}

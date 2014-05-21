@@ -29,8 +29,10 @@
 #include "Color.h"
 #include "db.h"
 
-#define TILECENTER_IS_WORLDCENTER	INT_MAX
-#define TILECENTER_IS_MAPCENTER		INT_MIN
+#define TILE_WORLDCENTERED	INT_MAX
+#define TILE_AT_WORLDCENTER	(INT_MAX - 1)
+#define TILE_MAPCENTERED	INT_MIN
+#define TILE_AT_MAPCENTER	(INT_MIN + 1)
 
 class TileGenerator
 {
@@ -101,6 +103,7 @@ public:
 	void setTileBorderSize(int size);
 	void setTileSize(int width, int heigth);
 	void setTileOrigin(int x, int y);
+	void setTileCenter(int x, int y);
 	void enableProgressIndicator(void);
 	void parseColorsFile(const std::string &fileName);
 	void setBackend(std::string backend);
@@ -196,6 +199,8 @@ private:
 	int m_nextStoredYCoord;
 	int m_tileXOrigin;
 	int m_tileZOrigin;
+	int m_tileXCentered;
+	int m_tileYCentered;
 	int m_tileWidth;
 	int m_tileHeight;
 	int m_tileBorderSize;

@@ -155,8 +155,8 @@ TileGenerator::TileGenerator():
 	m_mapXEndNodeOffset(0),
 	m_mapYEndNodeOffset(0),
 	m_nextStoredYCoord(0),
-	m_tileXOrigin(TILECENTER_IS_WORLDCENTER),
-	m_tileZOrigin(TILECENTER_IS_WORLDCENTER),
+	m_tileXOrigin(TILE_WORLDCENTERED),
+	m_tileZOrigin(TILE_WORLDCENTERED),
 	m_tileWidth(0),
 	m_tileHeight(0),
 	m_tileBorderSize(1),
@@ -224,6 +224,16 @@ void TileGenerator::setTileOrigin(int x, int y)
 {
 	m_tileXOrigin = x;
 	m_tileZOrigin = y;
+	m_tileXCentered = false;
+	m_tileYCentered = false;
+}
+
+void TileGenerator::setTileCenter(int x, int y)
+{
+	m_tileXOrigin = x;
+	m_tileZOrigin = y;
+	m_tileXCentered = true;
+	m_tileYCentered = true;
 }
 
 void TileGenerator::setDrawOrigin(bool drawOrigin)
@@ -818,18 +828,52 @@ void TileGenerator::computeMapParameters()
 
 	// Set special values for origin (which depend on other paramters)
 	if (m_tileWidth) {
-		if (m_tileXOrigin == TILECENTER_IS_WORLDCENTER)
-			m_tileXOrigin = -m_tileWidth/2;
-		else if (m_tileXOrigin == TILECENTER_IS_MAPCENTER)
-			//m_tileXOrigin = ((m_xMax+1)*2-(m_xMax+1-m_xMin))*8 - m_tileWidth/2;
+		switch (m_tileXOrigin) {
+		case TILE_WORLDCENTERED:
+			m_tileXOrigin = -m_tileWidth / 2;
+			break;
+		case TILE_AT_WORLDCENTER:
+			m_tileXOrigin = 0;
+			break;
+		case TILE_MAPCENTERED:
+			m_tileXOrigin = m_xMin * 16 + m_mapXStartNodeOffset + mapWidth / 2 - m_tileWidth / 2;
+			printf("TILE_MAPCENTERED: m_tileXOrigin: m_xMin: %d, m_mapXStartNodeOffset: %d, mapWidth: %d, m_tileWidth: %d, m_tileXOrigin: %d\n",
+				m_xMin, m_mapXStartNodeOffset, mapWidth, m_tileWidth, m_tileXOrigin);
+			break;
+		case TILE_AT_MAPCENTER:
 			m_tileXOrigin = m_xMin * 16 + m_mapXStartNodeOffset + mapWidth / 2;
+			printf("TILE_AT_MAPCENTER: m_tileXOrigin: m_xMin: %d, m_mapXStartNodeOffset: %d, mapWidth: %d, m_tileWidth: %d, m_tileXOrigin: %d\n",
+				m_xMin, m_mapXStartNodeOffset, mapWidth, m_tileWidth, m_tileXOrigin);
+			break;
+		default:
+			if (m_tileXCentered)
+				m_tileXOrigin -= m_tileWidth/2;
+			break;
+		}
 	}
 	if (m_tileHeight) {
-		if (m_tileZOrigin == TILECENTER_IS_WORLDCENTER)
-			m_tileZOrigin = -m_tileHeight/2;
-		else if (m_tileZOrigin == TILECENTER_IS_MAPCENTER)
-			//m_tileZOrigin = ((m_zMax+1)*2-(m_zMax+1-m_zMin))*8 - m_tileHeight/2;
-			m_tileZOrigin = -m_xMax * 16 + m_mapYStartNodeOffset + mapHeight / 2;
+		switch (m_tileZOrigin) {
+		case TILE_WORLDCENTERED:
+			m_tileZOrigin = -m_tileHeight / 2;
+			break;
+		case TILE_AT_WORLDCENTER:
+			m_tileZOrigin = 0;
+			break;
+		case TILE_MAPCENTERED:
+			m_tileZOrigin = (m_zMax + 1) * 16 - 1 - m_mapYStartNodeOffset - mapHeight / 2 - m_tileHeight / 2;
+			printf("TILE_MAPCENTERED: m_tileZOrigin: m_zMax: %d, m_mapYStartNodeOffset: %d, mapHeight: %d, m_tileHeight: %d, m_tileZOrigin: %d\n",
+				m_zMax, m_mapYStartNodeOffset, mapHeight, m_tileHeight, m_tileZOrigin);
+			break;
+		case TILE_AT_MAPCENTER:
+			m_tileZOrigin = (m_zMax + 1) * 16 - 1 - m_mapYStartNodeOffset - mapHeight / 2;
+			printf("TILE_AT_MAPCENTER: m_tileZOrigin: m_zMax: %d, m_mapYStartNodeOffset: %d, mapHeight: %d, m_tileHeight: %d, m_tileZOrigin: %d\n",
+				m_zMax, m_mapYStartNodeOffset, mapHeight, m_tileHeight, m_tileZOrigin);
+			break;
+		default:
+			if (m_tileYCentered)
+				m_tileZOrigin -= m_tileHeight / 2;
+			break;
+		}
 	}
 
 	// Compute adjustments for tiles.

@@ -265,16 +265,26 @@ tileorigin x,y
     Arrange the tiles so that one tile has its bottom-left (i.e. south-west)
     corner at map coordinates x,y.
 
-    By default, tiles are arranged so that one tile has map coordinate 0,0 at
-    its center.
+    (see also `tilecenter`)
+
+tilecenter x,y|map|world
+    Arrange the tiles so that one tile has its center at map coordinates x,y.
+
+    If the value 'world' is used, arrange for one tile to have its center
+    at the center of the world instead. This is the default for tiles.
+
+    If the value 'map' is used, arrange for one tile to have its center
+    at the center of the map instead.
 
     Examples:
 
-    `--tileorigin -500,-500`
+    `--tilecenter -500,-500`
 
-    `--tileorigin center-map`
+    `--tileorigin 0,0`
 
-    `--tileorigin center-world`
+    `--tilecenter map`
+
+    `--tilecenter world`
 
 tilebordercolor
     Color of border between tiles, `--tilebordercolor #000000`
