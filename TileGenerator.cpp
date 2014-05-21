@@ -375,19 +375,22 @@ void TileGenerator::parseColorsStream(std::istream &in, const std::string &filen
 	int linenr = 0;
 	for (std::getline(in,line); in.good(); std::getline(in,line)) {
 		linenr++;
+		size_t comment = line.find_first_of('#');
+		if (comment != string::npos)
+			line.erase(comment);
 		istringstream iline;
 		iline.str(line);
 		iline >> std::skipws;
 		string name;
 		ColorEntry color;
 		iline >> name;
-		if (name.length() == 0 || name[0] == '#')
+		if (name.length() == 0)
 			continue;
 		int r, g, b, a, t;
 		iline >> r;
 		iline >> g;
 		iline >> b;
-		if (!iline.good() && !iline.eof()) {
+		if (iline.fail()) {
 			std::cerr << filename << ":" << linenr << ": bad line in colors file (" << line << ")" << std::endl;
 			continue;
 		}
