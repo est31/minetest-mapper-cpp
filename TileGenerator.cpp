@@ -860,8 +860,8 @@ void TileGenerator::computeMapParameters()
 				// Input parameters
 				m_zMin,
 				m_zMax,
-				m_mapYEndNodeOffset,
-				m_mapYStartNodeOffset,
+				-m_mapYEndNodeOffset,
+				-m_mapYStartNodeOffset,
 				m_tileZOrigin,
 				m_tileHeight,
 				// Input / Output parameters
