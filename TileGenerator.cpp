@@ -116,6 +116,9 @@ static inline int readBlockContent(const unsigned char *mapData, int version, in
 	}
 }
 
+static const ColorEntry nodeColorNotDrawnObject;
+const ColorEntry *TileGenerator::NodeColorNotDrawn = &nodeColorNotDrawnObject;
+
 TileGenerator::TileGenerator():
 	verboseCoordinates(0),
 	verboseReadColors(0),
@@ -806,7 +809,8 @@ void TileGenerator::pushPixelRows(int zPosLimit) {
 		for (int x = m_mapXStartNodeOffset; x < worldBlockX2StoredX(m_xMax + 1) + m_mapXEndNodeOffset; x++) {
 			int mapX = x - m_mapXStartNodeOffset;
 			int mapY = y - m_mapYStartNodeOffset;
-			PixelAttribute &pixel = m_blockPixelAttributes.attribute(y, x);
+			#define pixel m_blockPixelAttributes.attribute(y, x)
+			//PixelAttribute &pixel = m_blockPixelAttributes.attribute(y, x);
 			if (pixel.next16Empty) {
 				x += 15;
 				continue;
@@ -817,6 +821,7 @@ void TileGenerator::pushPixelRows(int zPosLimit) {
 #endif
 			if (pixel.is_valid() || pixel.color().to_uint())
 				m_image->tpixels[mapY2ImageY(mapY)][mapX2ImageX(mapX)] = pixel.color().to_libgd();
+			#undef pixel
 		}
 	}
 	int yLimit = worldBlockZ2StoredY(zPosLimit);
@@ -1079,8 +1084,6 @@ void TileGenerator::processMapBlock(const DB::Block &block)
 	}
 	dataOffset += 4; // Skip timestamp
 
-	m_blockAirId = -1;
-	m_blockIgnoreId = -1;
 	// Read mapping
 	if (version >= 22) {
 		dataOffset++; // mapping version
@@ -1093,17 +1096,24 @@ void TileGenerator::processMapBlock(const DB::Block &block)
 			dataOffset += 2;
 			string name;
 			readString(name, data, dataOffset, nameLen, length);
-			name = name.c_str();		// Truncate any trailing NUL bytes
-			if (name == "air") {
-				ColorMap::const_iterator color = m_colors.find(name);
-				if (!m_drawAir || color == m_colors.end())
-					m_blockAirId = nodeId;
+			size_t end = name.find_first_of('\0');
+			if (end != std::string::npos)
+				name.erase(end);
+			ColorMap::const_iterator color = m_colors.find(name);
+			if (name == "air" && !(m_drawAir && color != m_colors.end())) {
+				m_nodeIDColor[nodeId] = NodeColorNotDrawn;
 			}
 			else if (name == "ignore") {
-				m_blockIgnoreId = nodeId;
+				m_nodeIDColor[nodeId] = NodeColorNotDrawn;
 			}
 			else {
-				m_nameMap[nodeId] = name;
+				if (color != m_colors.end()) {
+					m_nodeIDColor[nodeId] = &color->second;
+				}
+				else {
+					m_nameMap[nodeId] = name;
+					m_nodeIDColor[nodeId] = NULL;
+				}
 			}
 			dataOffset += nameLen;
 		}
@@ -1219,34 +1229,36 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 			if (m_readedPixels[z] & (1 << x)) {
 				continue;
 			}
-			if (m_blockDefaultColor.to_uint() && !m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x).color().to_uint()) {
-				PixelAttribute pixel = PixelAttribute(m_blockDefaultColor, NAN);
-				m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x) = pixel;
+			// The #define of pixel performs *significantly* *better* than the definition of PixelAttribute &pixel ...
+			#define pixel m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x)
+			//PixelAttribute &pixel = m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x);
+			if (m_blockDefaultColor.to_uint() && !pixel.color().to_uint()) {
 				rowIsEmpty = false;
+				pixel = PixelAttribute(m_blockDefaultColor, NAN);
 			}
 			for (int y = maxY; y >= minY; --y) {
 				int position = x + (y << 4) + (z << 8);
 				int content = readBlockContent(mapData, version, position);
-				if (content == m_blockIgnoreId || content == m_blockAirId) {
+				if (m_nodeIDColor[content] == NodeColorNotDrawn) {
 					continue;
 				}
-				NodeID2NameMap::iterator blockName = m_nameMap.find(content);
-				if (blockName == m_nameMap.end())
-					continue;
-				const string &name = blockName->second;
-				ColorMap::const_iterator color = m_colors.find(name);
-				if (color != m_colors.end()) {
+				if (m_nodeIDColor[content]) {
 					rowIsEmpty = false;
-					PixelAttribute pixel = PixelAttribute(color->second, pos.y * 16 + y);
-					m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x).mixUnder(pixel);
-					if ((m_drawAlpha && pixel.alpha() == 0xff) || (!m_drawAlpha && pixel.alpha() != 0)) {
+					#define nodeColor (*m_nodeIDColor[content])
+					//const ColorEntry &nodeColor = *m_nodeIDColor[content];
+					pixel.mixUnder(PixelAttribute(nodeColor, pos.y * 16 + y));
+					if ((m_drawAlpha && nodeColor.a == 0xff) || (!m_drawAlpha && nodeColor.a != 0)) {
 						m_readedPixels[z] |= (1 << x);
 						break;
 					}
+					#undef nodeColor
 				} else {
-					m_unknownNodes.insert(name);
+					NodeID2NameMap::iterator blockName = m_nameMap.find(content);
+					if (blockName != m_nameMap.end())
+						m_unknownNodes.insert(blockName->second);
 				}
 			}
+			#undef pixel
 		}
 		if (!rowIsEmpty)
 			m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin).next16Empty = false;

@@ -17,6 +17,8 @@
 #define MAPBLOCK_MIN	(-2048)
 #define MAPBLOCK_MAX	2047
 
+// Max number of node name -> color mappings stored in a mapblock
+#define MAPBLOCK_MAXCOLORS	65536
 
 #ifdef USE_CMAKE_CONFIG_H
 #include "cmake_config.h"

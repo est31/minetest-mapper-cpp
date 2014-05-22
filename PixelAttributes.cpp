@@ -129,12 +129,14 @@ void PixelAttributes::renderShading(bool drawAlpha)
 				d = 3;
 			}
 			d = d * 12 / 255;
+			#define pixel (m_pixelAttributes[y][x])
+			//PixelAttribute &pixel = m_pixelAttributes[y][x];
 			if (drawAlpha)
-				d = d * (1 - m_pixelAttributes[y][x].t);
-			PixelAttribute &pixel = m_pixelAttributes[y][x];
+				d = d * (1 - pixel.t);
 			pixel.r = colorSafeBounds(pixel.r + d);
 			pixel.g = colorSafeBounds(pixel.g + d);
 			pixel.b = colorSafeBounds(pixel.b + d);
+			#undef pixel
 		}
 	}
 	m_firstUnshadedY = y - yCoord2Line(0);
@@ -142,7 +144,6 @@ void PixelAttributes::renderShading(bool drawAlpha)
 
 void PixelAttribute::mixUnder(const PixelAttribute &p)
 {
-	int prev_alpha = alpha();
 	if (!is_valid() || a == 0) {
 		if (!is_valid() || p.a != 0) {
 			r = p.r;
@@ -154,6 +155,7 @@ void PixelAttribute::mixUnder(const PixelAttribute &p)
 		h = p.h;
 	}
 	else {
+		int prev_alpha = alpha();
 		r = (a * r + p.a * (1 - a) * p.r);
 		g = (a * g + p.a * (1 - a) * p.g);
 		b = (a * b + p.a * (1 - a) * p.b);
@@ -161,15 +163,15 @@ void PixelAttribute::mixUnder(const PixelAttribute &p)
 		if (p.a != 1)
 			t = (t + p.t) / 2;
 		h = p.h;
-	}
-	if (prev_alpha >= 254 && p.alpha() < 255) {
-		// Darken
-		// Parameters make deep water look good :-)
-		r = r * 0.95;
-		g = g * 0.95;
-		b = b * 0.95;
-		if (p.a != 1)
-			t = (t + p.t) / 2;
+		if (prev_alpha >= 254 && p.alpha() < 255) {
+			// Darken
+			// Parameters make deep water look good :-)
+			r = r * 0.95;
+			g = g * 0.95;
+			b = b * 0.95;
+			if (p.a != 1)
+				t = (t + p.t) / 2;
+		}
 	}
 
 }

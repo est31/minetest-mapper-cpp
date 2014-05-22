@@ -217,13 +217,12 @@ private:
 	int m_pictHeight;
 	std::list<BlockPos> m_positions;
 	NodeID2NameMap m_nameMap;
+	static const ColorEntry *NodeColorNotDrawn;
+	const ColorEntry *m_nodeIDColor[MAPBLOCK_MAXCOLORS];
 	ColorMap m_colors;
 	uint16_t m_readedPixels[16];
 	std::set<std::string> m_unknownNodes;
 	std::vector<DrawObject> m_drawObjects;
-
-	int m_blockAirId;
-	int m_blockIgnoreId;
 }; /* -----  end of class TileGenerator  ----- */
 
 #endif /* end of include guard: TILEGENERATOR_H_JJNUCARH */
