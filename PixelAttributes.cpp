@@ -119,9 +119,11 @@ void PixelAttributes::renderShading(bool drawAlpha)
 			}
 			if (!m_pixelAttributes[y][x - 1].is_valid())
 				continue;
+			if (!m_pixelAttributes[y][x].a)
+				continue;
 			double h = m_pixelAttributes[y][x].h;
-			double h1 = m_pixelAttributes[y][x - 1].h;
-			double h2 = m_pixelAttributes[y - 1][x].h;
+			double h1 = m_pixelAttributes[y][x - 1].a ? m_pixelAttributes[y][x - 1].h : h;
+			double h2 = m_pixelAttributes[y - 1][x].a ? m_pixelAttributes[y - 1][x].h : h;
 			double d = (h - h1) + (h - h2);
 			if (d > 3) {
 				d = 3;
@@ -141,12 +143,14 @@ void PixelAttributes::renderShading(bool drawAlpha)
 void PixelAttribute::mixUnder(const PixelAttribute &p)
 {
 	int prev_alpha = alpha();
-	if (!is_valid() || a==0) {
-		r = p.r;
-		g = p.g;
-		b = p.b;
-		a = p.a;
-		t = 0;
+	if (!is_valid() || a == 0) {
+		if (!is_valid() || p.a != 0) {
+			r = p.r;
+			g = p.g;
+			b = p.b;
+			a = p.a;
+			t = 0;
+		}
 		h = p.h;
 	}
 	else {

@@ -1217,14 +1217,8 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 				if (color != m_colors.end()) {
 					rowIsEmpty = false;
 					PixelAttribute pixel = PixelAttribute(color->second, pos.y * 16 + y);
-					if (m_drawAlpha) {
-						m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x).mixUnder(pixel);
-						if(pixel.alpha() == 0xff) {
-							m_readedPixels[z] |= (1 << x);
-							break;
-						}
-					} else {
-						m_blockPixelAttributes.attribute(zBegin + 15 - z, xBegin + x) = pixel;
+					m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x).mixUnder(pixel);
+					if ((m_drawAlpha && pixel.alpha() == 0xff) || (!m_drawAlpha && pixel.alpha() != 0)) {
 						m_readedPixels[z] |= (1 << x);
 						break;
 					}
