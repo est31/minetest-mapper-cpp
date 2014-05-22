@@ -1,0 +1,106 @@
+[22 may 2014]
+    General: integrated all (relevant) patches from the minetest/minetestmapper tree
+    	(only patches that actually conflict with my work were obviously not merged)
+
+    Features:
+    	- redis backend support (merged from minetest/minetestmapper)
+		The code was ported and compiles. Unfortunately, I wasn't able
+		to test against a redis database yet.
+	- The database backend to use is now obtained from the world.mt file by default
+	- Additional geometrical figures can be drawn on the map
+		Similar to the circles drawn for origin and players. Supported figures
+		are: point, line, rectangle, ellipse (circle), text.
+		Translucency (alpha) is supported, although for ellipses, it does not
+		work as expected (due to a bug in libgd)
+
+    Enhancements:
+    	- Failure to process a command-line option now causes a specific error message.
+		The generic help message is often not very helpful in such a case.
+    	- The map origin color and Player colors can now be specified with an alpha value.
+		Unfortunately, due to a bug in libgd, the effect is not what it should be...
+	- The colors.txt file is now also searched for in the world's minetest directory
+		(the directory containing minetest.conf) - if it can be found.
+	- C++11 compilation is enabled if supported. If so, faster datastructures are used.
+		instead of regular map, unordered_map is used where applicable
+	- Colors used with drawalpha can now differ from colors used without drawalpha.
+		Colors.txt can now have 'duplicate' entries for nodes, depending on whether alpha
+		transparency is on or off.
+		With 'drawalpha', a non-opaque color entry (with alpha less than 255) is
+		preferred, whereas without 'drawalpha', a color entry with alpha 255
+		(or unspecified alpha) is preferred.
+		In all other cases, later entries override former entries in the colors file.
+		The color of water with drawalpha was changed a little.
+	- The sqlite3 backend is now optional and can be disabled during compilation.
+	- Failures parsing or decompressing the block data from the database are now caught and reported.
+		Map generation continues, and aborts only after 100 or more errors.
+		The error messages for decompression failures were also improved.
+	- Geometry can now also be specified using 2 corners of the area (instead of corner and dimensions)
+	- The configuration of tiles location was improved
+
+    Bugfixes:
+    	- When not using a geometry option, *do* generate the smallest possible map
+	- Fix transparency computation - libgd uses 0..127 (not 255)
+	- Using an invalid option name no longer causes a crash, but is reported.
+	- Fixed a crash when the top part of the generated map is empty
+	- The computation of map size with tiles was fixed (height could be miscomputed)
+    	
+[16 apr 2014]
+    General: integrated all (relevant) patches from the minetest/minetestmapper tree
+    	(only patches that actually conflict with my work were obviously not merged)
+
+    Features:
+    	- A grid can now be added to the map ( with '--tiles')
+		Gridlines are drawn 'between' map rows/columns, and therefore do
+		not obscure map data. (as a consequence, straight lines may not look
+		straight where they cross gridlines).
+	- Alpha transparency was added (merged from minetest/minetestmapper)
+		Some improvements and fixes were added to make it work as expected
+	- An option was added to print progress information during map generation
+		This prints the z-coordinate of every block-row being rendered.
+	- The map geometry can now be specified with node-granularity
+		The geometry is no longer always rounded away from zero, to a multiple of 16.
+		I.e. requesting a 80x82 map will result in a 80x82 map, not a 80x96 map
+		(or even 96x112).
+		The old behavior (i.e. block-granularity) is still available as well.
+	- The colors.txt file is now searched for in different locations
+		The mapper looks in the world directory for a colors.txt file by default
+		Alternatively, the colors.txt file in $HOME/.minetest is used if it exists.
+		A colors.txt file in the current directory is a last resort case, and causes a
+		warning message.
+
+    Enhancements:
+    	- Colors.txt is no longer included in the executable (merged from minetest/minetestmapper)
+	- Option and colors parsing failures are handled more gracefully
+	
+    Bugfixes:
+    	- The computation of origin location and player locations was fixed (off-by-one)
+	- Colors.txt is now parsed line-by-line, and errors are reported.
+		Errors no longer cause the remainder of the file to be silently ignored.
+	- A failure to create the image for lack of memory is now caught.
+		When a lack of memory is to be expected during image generation, a warning is printed
+		before image generation starts.
+	- The handling of an alpha component in colors was fixed
+	
+[26 mar 2014]
+
+    Features:
+	- A map of the *requested* size can now be generated (after rounding to blocks)
+		The option --forcegeometry makes sure the map is not reduced in size if the
+		world is smaller than the requested geometry.
+		Rounding to a multiple of the block size (i.e. 16) still happens.
+
+    Enhancements:
+	- The size of the map is not limited by default
+		By default, only part of the world was included in the map
+	- Performance was significantly improved
+	- An ability to report the sizes of the world and of the map was added
+
+    Bugfixes:
+	- Fix geometry so that w and h are the map dimensions
+	- Vertical limits handling (--min-y and --max-y) was fixed, and now works as expected
+	- Failure to open the output file is now caught and handled gracefully
+	- The computation of block number bounds was fixed (off-by-one)
+
+[16 feb 2014]
+	Forked from sfan5/minetest-mapper-cpp
+
