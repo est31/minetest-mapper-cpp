@@ -12,6 +12,12 @@
 		are: point, line, rectangle, ellipse (circle), text.
 		Translucency (alpha) is supported, although for ellipses, it does not
 		work as expected (due to a bug in libgd)
+	- 'air' nodes can now have a color. Their color should be defined as fully
+		transparent (alpha = 0), so that they don't obscure underlying blocks.
+		In that case, air will only be drawn if no other blocks are beneath it.
+		Nodes with alpha value 0 never participate in shading.
+		As this comes at a significant performance penalty, this feature is
+		subject to a command-line option: --drawair.
 	- A default color can be specified for invisible/undefined nodes in rendered
 		blocks Normally, such nodes are not drawn, so they have the background
 		color; If a different default color is specified, undefined/invisible

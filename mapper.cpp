@@ -26,6 +26,7 @@ using namespace std;
 #define OPT_PROGRESS_INDICATOR		0x82
 #define OPT_DRAW_OBJECT			0x83
 #define OPT_BLOCKCOLOR			0x84
+#define OPT_DRAWAIR			0x85
 #define OPT_VERBOSE_SEARCH_COLORS	0x86
 
 // Will be replaced with the actual name and location of the executable (if found)
@@ -71,6 +72,7 @@ void usage()
 			"  --drawplayers\n"
 			"  --draworigin\n"
 			"  --drawalpha\n"
+			"  --drawair\n"
 			"  --draw[map]point \"<x>,<y> color\"\n"
 			"  --draw[map]line \"<geometry> color\"\n"
 			"  --draw[map]circle \"<geometry> color\"\n"
@@ -526,6 +528,7 @@ int main(int argc, char *argv[])
 		{"drawplayers", no_argument, 0, 'P'},
 		{"drawscale", no_argument, 0, 'S'},
 		{"drawalpha", no_argument, 0, 'e'},
+		{"drawair", no_argument, 0, OPT_DRAWAIR},
 		{"drawpoint", required_argument, 0, OPT_DRAW_OBJECT},
 		{"drawline", required_argument, 0, OPT_DRAW_OBJECT},
 		{"drawcircle", required_argument, 0, OPT_DRAW_OBJECT},
@@ -646,6 +649,9 @@ int main(int argc, char *argv[])
 					break;
 				case 'e':
 					generator.setDrawAlpha(true);
+					break;
+				case OPT_DRAWAIR:
+					generator.setDrawAir(true);
 					break;
 				case 'H':
 					generator.setShading(false);

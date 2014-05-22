@@ -131,6 +131,7 @@ TileGenerator::TileGenerator():
 	m_drawPlayers(false),
 	m_drawScale(false),
 	m_drawAlpha(false),
+	m_drawAir(false),
 	m_shading(true),
 	m_border(0),
 	m_backend(DEFAULT_BACKEND),
@@ -266,6 +267,11 @@ void TileGenerator::setDrawScale(bool drawScale)
 void TileGenerator::setDrawAlpha(bool drawAlpha)
 {
     m_drawAlpha = drawAlpha;
+}
+
+void TileGenerator::setDrawAir(bool drawAir)
+{
+	m_drawAir = drawAir;
 }
 
 void TileGenerator::setShading(bool shading)
@@ -1089,7 +1095,9 @@ void TileGenerator::processMapBlock(const DB::Block &block)
 			readString(name, data, dataOffset, nameLen, length);
 			name = name.c_str();		// Truncate any trailing NUL bytes
 			if (name == "air") {
-				m_blockAirId = nodeId;
+				ColorMap::const_iterator color = m_colors.find(name);
+				if (!m_drawAir || color == m_colors.end())
+					m_blockAirId = nodeId;
 			}
 			else if (name == "ignore") {
 				m_blockIgnoreId = nodeId;

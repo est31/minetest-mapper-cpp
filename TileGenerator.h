@@ -92,6 +92,7 @@ public:
 	void setDrawPlayers(bool drawPlayers);
 	void setDrawScale(bool drawScale);
 	void setDrawAlpha(bool drawAlpha);
+	void setDrawAir(bool drawAir);
 	void drawObject(const DrawObject &object) { m_drawObjects.push_back(object); }
 	void setShading(bool shading);
 	void setGeometry(const NodeCoord &corner1, const NodeCoord &corner2);
@@ -169,6 +170,7 @@ private:
 	bool m_drawPlayers;
 	bool m_drawScale;
 	bool m_drawAlpha;
+	bool m_drawAir;
 	bool m_shading;
 	int m_border;
 	std::string m_backend;

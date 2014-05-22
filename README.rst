@@ -171,6 +171,14 @@ draworigin:
 drawalpha:
     Allow blocks to be drawn with transparency, `--drawalpha`
 
+drawair:
+    Draw air blocks (at a significant performance penalty). `--drawair`
+
+    For best results, the air color should be defined as fully transparent
+    so that the color of underlying blocks overrides it.
+
+    This option has a significant performance impact.
+
 noshading:
     Don't draw shading on nodes, `--noshading`
 

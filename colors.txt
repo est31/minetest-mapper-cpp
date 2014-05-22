@@ -1,3 +1,4 @@
+air 220 220 255 0
 mesecons_pistons:piston_up_sticky_on 160 160 160
 mesecons_pistons:piston_normal_off 125 125 125
 mesecons_pistons:piston_up_pusher_sticky 123 124 124
