@@ -840,13 +840,9 @@ void TileGenerator::computeMapParameters()
 			break;
 		case TILE_MAPCENTERED:
 			m_tileXOrigin = m_xMin * 16 + m_mapXStartNodeOffset + mapWidth / 2 - m_tileWidth / 2;
-			printf("TILE_MAPCENTERED: m_tileXOrigin: m_xMin: %d, m_mapXStartNodeOffset: %d, mapWidth: %d, m_tileWidth: %d, m_tileXOrigin: %d\n",
-				m_xMin, m_mapXStartNodeOffset, mapWidth, m_tileWidth, m_tileXOrigin);
 			break;
 		case TILE_AT_MAPCENTER:
 			m_tileXOrigin = m_xMin * 16 + m_mapXStartNodeOffset + mapWidth / 2;
-			printf("TILE_AT_MAPCENTER: m_tileXOrigin: m_xMin: %d, m_mapXStartNodeOffset: %d, mapWidth: %d, m_tileWidth: %d, m_tileXOrigin: %d\n",
-				m_xMin, m_mapXStartNodeOffset, mapWidth, m_tileWidth, m_tileXOrigin);
 			break;
 		default:
 			if (m_tileXCentered)
@@ -864,13 +860,9 @@ void TileGenerator::computeMapParameters()
 			break;
 		case TILE_MAPCENTERED:
 			m_tileZOrigin = (m_zMax + 1) * 16 - 1 - m_mapYStartNodeOffset - mapHeight / 2 - m_tileHeight / 2;
-			printf("TILE_MAPCENTERED: m_tileZOrigin: m_zMax: %d, m_mapYStartNodeOffset: %d, mapHeight: %d, m_tileHeight: %d, m_tileZOrigin: %d\n",
-				m_zMax, m_mapYStartNodeOffset, mapHeight, m_tileHeight, m_tileZOrigin);
 			break;
 		case TILE_AT_MAPCENTER:
 			m_tileZOrigin = (m_zMax + 1) * 16 - 1 - m_mapYStartNodeOffset - mapHeight / 2;
-			printf("TILE_AT_MAPCENTER: m_tileZOrigin: m_zMax: %d, m_mapYStartNodeOffset: %d, mapHeight: %d, m_tileHeight: %d, m_tileZOrigin: %d\n",
-				m_zMax, m_mapYStartNodeOffset, mapHeight, m_tileHeight, m_tileZOrigin);
 			break;
 		default:
 			if (m_tileYCentered)
