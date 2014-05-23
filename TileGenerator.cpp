@@ -122,6 +122,7 @@ TileGenerator::TileGenerator():
 	verboseStatistics(false),
 	progressIndicator(false),
 	m_bgColor(255, 255, 255),
+	m_blockDefaultColor(0, 0, 0, 0),
 	m_scaleColor(0, 0, 0),
 	m_originColor(255, 0, 0),
 	m_playerColor(255, 0, 0),
@@ -173,6 +174,13 @@ TileGenerator::~TileGenerator()
 void TileGenerator::setBgColor(const Color &bgColor)
 {
 	m_bgColor = bgColor;
+}
+
+void TileGenerator::setBlockDefaultColor(const Color &color)
+{
+	m_blockDefaultColor = color;
+	// Any value will do, except for 0
+	m_blockDefaultColor.a = 1;
 }
 
 void TileGenerator::setShrinkGeometry(bool shrink)
@@ -801,7 +809,7 @@ void TileGenerator::pushPixelRows(int zPosLimit) {
 			{ int ix = mapX2ImageX(mapX); assert(ix - m_border >= 0 && ix - m_border < m_pictWidth); }
 			{ int iy = mapY2ImageY(mapY); assert(iy - m_border >= 0 && iy - m_border < m_pictHeight); }
 #endif
-			if (pixel.is_valid())
+			if (pixel.is_valid() || pixel.color().to_uint())
 				m_image->tpixels[mapY2ImageY(mapY)][mapX2ImageX(mapX)] = pixel.color().to_libgd();
 		}
 	}
@@ -1202,6 +1210,11 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 		for (int x = 0; x < 16; ++x) {
 			if (m_readedPixels[z] & (1 << x)) {
 				continue;
+			}
+			if (m_blockDefaultColor.to_uint() && !m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x).color().to_uint()) {
+				PixelAttribute pixel = PixelAttribute(m_blockDefaultColor, NAN);
+				m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x) = pixel;
+				rowIsEmpty = false;
 			}
 			for (int y = maxY; y >= minY; --y) {
 				int position = x + (y << 4) + (z << 8);

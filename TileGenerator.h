@@ -83,6 +83,7 @@ public:
 	TileGenerator();
 	~TileGenerator();
 	void setBgColor(const Color &bgColor);
+	void setBlockDefaultColor(const Color &olor);
 	void setScaleColor(const Color &scaleColor);
 	void setOriginColor(const Color &originColor);
 	void setPlayerColor(const Color &playerColor);
@@ -159,6 +160,7 @@ public:
 
 private:
 	Color m_bgColor;
+	Color m_blockDefaultColor;
 	Color m_scaleColor;
 	Color m_originColor;
 	Color m_playerColor;

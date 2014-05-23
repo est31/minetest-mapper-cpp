@@ -12,6 +12,11 @@
 		are: point, line, rectangle, ellipse (circle), text.
 		Translucency (alpha) is supported, although for ellipses, it does not
 		work as expected (due to a bug in libgd)
+	- A default color can be specified for invisible/undefined nodes in rendered
+		blocks Normally, such nodes are not drawn, so they have the background
+		color; If a different default color is specified, undefined/invisible
+		nodes in defined blocks get the default color, and can be distinguished
+		from undefined blocks (which still have the regular background color).
 
     Enhancements:
     	- Failure to process a command-line option now causes a specific error message.

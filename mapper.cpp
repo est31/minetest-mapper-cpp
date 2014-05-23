@@ -25,6 +25,7 @@ using namespace std;
 #define OPT_SQLITE_CACHEWORLDROW	0x81
 #define OPT_PROGRESS_INDICATOR		0x82
 #define OPT_DRAW_OBJECT			0x83
+#define OPT_BLOCKCOLOR			0x84
 #define OPT_VERBOSE_SEARCH_COLORS	0x86
 
 // Will be replaced with the actual name and location of the executable (if found)
@@ -61,6 +62,7 @@ void usage()
 			"  -o/--output <output_image.png>\n"
 			"  --colors <file>\n"
 			"  --bgcolor <color>\n"
+			"  --blockcolor <color>\n"
 			"  --scalecolor <color>\n"
 			"  --playercolor <color>\n"
 			"  --origincolor <color>\n"
@@ -516,6 +518,7 @@ int main(int argc, char *argv[])
 		{"output", required_argument, 0, 'o'},
 		{"colors", required_argument, 0, 'C'},
 		{"bgcolor", required_argument, 0, 'b'},
+		{"blockcolor", required_argument, 0, OPT_BLOCKCOLOR},
 		{"scalecolor", required_argument, 0, 's'},
 		{"origincolor", required_argument, 0, 'r'},
 		{"playercolor", required_argument, 0, 'p'},
@@ -595,6 +598,9 @@ int main(int argc, char *argv[])
 					break;
 				case 'b':
 					generator.setBgColor(Color(optarg, 0));
+					break;
+				case OPT_BLOCKCOLOR:
+					generator.setBlockDefaultColor(Color(optarg, 0));
 					break;
 				case 's':
 					generator.setScaleColor(Color(optarg,0));

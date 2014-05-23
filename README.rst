@@ -137,6 +137,13 @@ colors <file>:
 bgcolor:
     Background color of image, `--bgcolor #ffffff`
 
+blockcolor:
+    Default color of nodes in blocks that are in the database, `--blockcolor #ffffff`
+
+    If a block is in the database, but some of its nodes are not visible (because they are
+    air, or 'invalid', the nodes are drawn in this color (as opposed to the background
+    color, which shows for blocks that are not in the database)
+
 scalecolor:
     Color of scale, `--scalecolor #000000`
 
