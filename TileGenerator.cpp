@@ -793,6 +793,10 @@ void TileGenerator::pushPixelRows(int zPosLimit) {
 			int mapX = x - m_mapXStartNodeOffset;
 			int mapY = y - m_mapYStartNodeOffset;
 			PixelAttribute &pixel = m_blockPixelAttributes.attribute(y, x);
+			if (pixel.next16Empty) {
+				x += 15;
+				continue;
+			}
 #ifdef DEBUG
 			{ int ix = mapX2ImageX(mapX); assert(ix - m_border >= 0 && ix - m_border < m_pictWidth); }
 			{ int iy = mapY2ImageY(mapY); assert(iy - m_border >= 0 && iy - m_border < m_pictHeight); }
@@ -1194,6 +1198,7 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 	int minY = (pos.y < m_reqYMin) ? 16 : (pos.y > m_reqYMin) ?  0 : m_reqYMinNode;
 	int maxY = (pos.y > m_reqYMax) ? -1 : (pos.y < m_reqYMax) ? 15 : m_reqYMaxNode;
 	for (int z = 0; z < 16; ++z) {
+		bool rowIsEmpty = true;
 		for (int x = 0; x < 16; ++x) {
 			if (m_readedPixels[z] & (1 << x)) {
 				continue;
@@ -1210,6 +1215,7 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 				const string &name = blockName->second;
 				ColorMap::const_iterator color = m_colors.find(name);
 				if (color != m_colors.end()) {
+					rowIsEmpty = false;
 					PixelAttribute pixel = PixelAttribute(color->second, pos.y * 16 + y);
 					if (m_drawAlpha) {
 						m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin + x).mixUnder(pixel);
@@ -1227,6 +1233,8 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 				}
 			}
 		}
+		if (!rowIsEmpty)
+			m_blockPixelAttributes.attribute(zBegin + 15 - z,xBegin).next16Empty = false;
 	}
 }
 

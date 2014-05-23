@@ -19,9 +19,10 @@
 #include "Color.h"
 
 struct PixelAttribute {
-	PixelAttribute(): h(NAN), t(0), a(0), r(0), g(0), b(0) {};
+	PixelAttribute(): next16Empty(true), h(NAN), t(0), a(0), r(0), g(0), b(0) {};
 	PixelAttribute(const Color &color, double height);
 	PixelAttribute(const ColorEntry &entry, double height);
+	bool next16Empty;
 	double h;
 	double t;
 	double a;
@@ -95,13 +96,13 @@ inline PixelAttribute &PixelAttributes::attribute(int y, int x)
 }
 
 inline PixelAttribute::PixelAttribute(const Color &color, double height) :
-	h(height), t(0), a(color.a/255.0),
+	next16Empty(false), h(height), t(0), a(color.a/255.0),
 	r(color.r/255.0), g(color.g/255.0), b(color.b/255.0)
 {
 }
 
 inline PixelAttribute::PixelAttribute(const ColorEntry &entry, double height) :
-	h(height), t(entry.t/255.0), a(entry.a/255.0),
+	next16Empty(false), h(height), t(entry.t/255.0), a(entry.a/255.0),
 	r(entry.r/255.0), g(entry.g/255.0), b(entry.b/255.0)
 {
 }

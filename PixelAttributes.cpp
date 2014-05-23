@@ -47,8 +47,10 @@ void PixelAttributes::setParameters(int width, int lines)
 			throw std::runtime_error("Failed to allocate memory for PixelAttributes");
 	}
 	for (int i=0; i<m_lineCount; i++)
-		for (int j=0; j<m_width; j++)
+		for (int j=0; j<m_width; j++) {
 			m_pixelAttributes[i][j].a=0;
+			m_pixelAttributes[i][j].next16Empty = (j - 1) % 16 == 0;
+		}
 }
 
 void PixelAttributes::scroll(int keepY)
@@ -107,7 +109,15 @@ void PixelAttributes::renderShading(bool drawAlpha)
 	int y;
 	for (y = yCoord2Line(m_firstUnshadedY); y <= yCoord2Line(m_lastY); y++) {
 		for (int x = 1; x < m_width; x++) {
-			if (!m_pixelAttributes[y][x].is_valid() || !m_pixelAttributes[y - 1][x].is_valid() || !m_pixelAttributes[y][x - 1].is_valid())
+			if (m_pixelAttributes[y][x].next16Empty) {
+				x += 15;
+				continue;
+			}
+			if (!m_pixelAttributes[y][x].is_valid() || !m_pixelAttributes[y - 1][x].is_valid()) {
+				x++;
+				continue;
+			}
+			if (!m_pixelAttributes[y][x - 1].is_valid())
 				continue;
 			double h = m_pixelAttributes[y][x].h;
 			double h1 = m_pixelAttributes[y][x - 1].h;
