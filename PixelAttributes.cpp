@@ -136,7 +136,7 @@ void PixelAttribute::mixUnder(const PixelAttribute &p)
 		g = p.g;
 		b = p.b;
 		a = p.a;
-		t = p.t;
+		t = 0;
 		h = p.h;
 	}
 	else {
@@ -144,15 +144,18 @@ void PixelAttribute::mixUnder(const PixelAttribute &p)
 		g = (a * g + p.a * (1 - a) * p.g);
 		b = (a * b + p.a * (1 - a) * p.b);
 		a = (a + (1 - a) * p.a);
-		t = (t + p.t) / 2;
+		if (p.a != 1)
+			t = (t + p.t) / 2;
 		h = p.h;
 	}
-	if (prev_alpha == 255 && p.alpha() < 255) {
+	if (prev_alpha >= 254 && p.alpha() < 255) {
 		// Darken
 		// Parameters make deep water look good :-)
-		r = r * (0.85 + 0.1 * (1 - p.a));
-		g = g * (0.85 + 0.1 * (1 - p.a));
-		b = b * (0.85 + 0.1 * (1 - p.a));
+		r = r * 0.95;
+		g = g * 0.95;
+		b = b * 0.95;
+		if (p.a != 1)
+			t = (t + p.t) / 2;
 	}
 
 }
