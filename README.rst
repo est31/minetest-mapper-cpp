@@ -28,19 +28,23 @@ With levelDB and Redis support:
     cmake -DENABLE_LEVELDB=true -DENABLE_REDIS=true .
     make
 
-Debug version:
+Cmake variables:
+^^^^^^^^^^^^^^^^
 
-::
+ENABLE_SQLITE3:
+    Enable sqlite3 backend support (on by default)
 
-    cmake -DCMAKE_BUILD_TYPE:STRING=Debug .
-    make
+ENABLE_LEVELDB:
+    Enable leveldb backend support (off by default)
 
-Release version:
+ENABLE_REDIS:
+    Enable redis backend support (off by default)
 
-::
+ENABLE_ALL_DATABASES:
+    Enable support for all backends (off by default)
 
-    cmake -DCMAKE_BUILD_TYPE:STRING=Release .
-    make
+CMAKE_BUILD_TYPE:
+    Type of build: 'Release' or 'Debug'. Defaults to 'Release'.
 
 Usage
 -----
