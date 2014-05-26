@@ -12,6 +12,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <cctype>
 #include <sstream>
 #include <stdexcept>
 #include <fcntl.h>
@@ -24,6 +25,10 @@ using namespace std;
 #define OPT_SQLITE_CACHEWORLDROW	0x81
 #define OPT_PROGRESS_INDICATOR		0x82
 #define OPT_DRAW_OBJECT			0x83
+
+// Will be replaced with the actual name and location of the executable (if found)
+string executableName = "minetestmapper";
+string installPrefix = INSTALL_PREFIX;
 
 class FuzzyBool {
 private:
@@ -48,7 +53,7 @@ const FuzzyBool FuzzyBool::No = -1;
 
 void usage()
 {
-	const char *usage_text = "minetestmapper [options]\n"
+	const char *options_text = "[options]\n"
 			"  -h/--help\n"
 			"  -V/--version\n"
 			"  -i/--input <world_path>\n"
@@ -105,7 +110,7 @@ void usage()
 			"\t[+-]<b>#[<n>]                                        (node <n> in block +/- <b>)\n"
 			"\t[+-]<b>.[<n>]                                        (node +/- (b * 16 + n))\n"
 			;
-	std::cout << usage_text;
+	std::cout << executableName << ' ' << options_text;
 }
 
 void parseColorsFile(TileGenerator &generator, const string &input, string colorsFile) {
@@ -125,7 +130,7 @@ void parseColorsFile(TileGenerator &generator, const string &input, string color
 		}
 
 		if (!colorsFound) {
-			// Check if '../..' seems like a valid minetest directory
+			// Check if '../..' looks like a valid minetest directory
 			string file = input + PATH_SEPARATOR + ".." + PATH_SEPARATOR + ".." + PATH_SEPARATOR + "minetest.conf";
 			int fd;
 			if (0 <= (fd = open(file.c_str(), O_RDONLY))) {
@@ -150,8 +155,19 @@ void parseColorsFile(TileGenerator &generator, const string &input, string color
 			}
 		}
 
-		// TODO: look for system-wide colors file (?) (e.g. /usr/share/games/minetest/colors.txt)
-		// (location should be subject to a build-time configuration of the installation directory)
+		if (!colorsFound && !installPrefix.empty()) {
+#if PACKAGING_FLAT
+			colorsFile = installPrefix + PATH_SEPARATOR + "colors.txt";
+#else
+			colorsFile = installPrefix + "/share/games/minetestmapper/" + "colors.txt";
+#endif
+			try {
+				generator.parseColorsFile(colorsFile);
+				colorsFound = true;
+			} catch (std::runtime_error e) {
+				// Ignore failure to locate system colors file
+			}
+		}
 
 		if (!colorsFound) {
 			try {
@@ -478,6 +494,18 @@ static bool parseMapGeometry(istream &is, NodeCoord &coord1, NodeCoord &coord2, 
 
 int main(int argc, char *argv[])
 {
+	if (argc) {
+		string argv0 = argv[0];
+		size_t pos = argv0.find_last_of(PATH_SEPARATOR);
+		if (pos == string::npos) {
+			if (!argv0.empty())
+				executableName = argv0;
+		}
+		else {
+			executableName = argv0.substr(pos + 1);
+		}
+	}
+
 	static struct option long_options[] =
 	{
 		{"help", no_argument, 0, 'h'},
