@@ -1,0 +1,20 @@
+
+if(CPACK_GENERATOR STREQUAL "TGZ")
+	if(CPACK_TGZ_PACKAGE_FILE_NAME)
+		set(CPACK_PACKAGE_FILE_NAME "${CPACK_TGZ_PACKAGE_FILE_NAME}")
+	endif(CPACK_TGZ_PACKAGE_FILE_NAME)
+endif(CPACK_GENERATOR STREQUAL "TGZ")
+
+if(CPACK_GENERATOR STREQUAL "DEB")
+	if(CPACK_DEBIAN_PACKAGE_FILE_NAME)
+		set(CPACK_PACKAGE_FILE_NAME "${CPACK_DEBIAN_PACKAGE_FILE_NAME}")
+	endif(CPACK_DEBIAN_PACKAGE_FILE_NAME)
+endif(CPACK_GENERATOR STREQUAL "DEB")
+
+if(CPACK_GENERATOR STREQUAL "RPM")
+	message(WARNING "cpack's rpm packaging code currently produces packages that have a directory conflict with a system package on fedora\nThe rpm package will probably not be installable unless --replacefiles is used")
+	if(CPACK_RPM_PACKAGE_FILE_NAME)
+		set(CPACK_PACKAGE_FILE_NAME "${CPACK_RPM_PACKAGE_FILE_NAME}")
+	endif(CPACK_RPM_PACKAGE_FILE_NAME)
+endif(CPACK_GENERATOR STREQUAL "RPM")
+

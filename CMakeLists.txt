@@ -3,7 +3,11 @@ cmake_minimum_required(VERSION 2.6)
 cmake_policy(SET CMP0003 NEW)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-# Try to compute a sensible version number.
+if(WIN32)
+	message(WARNING "Thanks for using minetestmapper on Windows.\nAs I do not have a windows computer at my disposal, I have not been able\nto test some windows-specific parts.\nPlease let me know if minetestmapper compiles OK, and if it runs fine.\nThanks!\n(Contact me via github)")
+endif(WIN32)
+
+# Try to compute a useful version number. (goal: uniquely identify the commit used to generate it)
 # Prefer the output of git describe (if available)
 # Else, use a stored version, and a checksum of the files (and hope that is dependable)
 
@@ -213,6 +217,7 @@ if(NOT USE_SQLITE3 AND NOT USE_LEVELDB AND NOT USE_REDIS)
 	message(SEND_ERROR "No database backends are configured, or none could be found")
 endif(NOT USE_SQLITE3 AND NOT USE_LEVELDB AND NOT USE_REDIS)
 
+
 include_directories(
 	"${PROJECT_BINARY_DIR}"
 	"${CMAKE_CURRENT_SOURCE_DIR}"
@@ -220,12 +225,6 @@ include_directories(
 	${LIBGD_INCLUDE_DIR}
 	${ZLIB_INCLUDE_DIR}
 )
-
-configure_file(
-	"${PROJECT_SOURCE_DIR}/cmake_config.h.in"
-	"${PROJECT_BINARY_DIR}/cmake_config.h"
-)
-add_definitions ( -DUSE_CMAKE_CONFIG_H )
 
 set(mapper_SRCS
 	PixelAttributes.cpp
@@ -261,28 +260,177 @@ target_link_libraries(
 	${ZLIB_LIBRARY}
 )
 
-install(FILES "AUTHORS" DESTINATION ".")
-install(FILES "COPYING" DESTINATION ".")
-install(FILES "README.rst" DESTINATION ".")
-install(FILES "colors.txt" DESTINATION ".")
 
 # CPack
 
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Overview mapper for Minetest")
+file(GLOB META_FILES RELATIVE "${CMAKE_HOME_DIRECTORY}" AUTHORS COPYING LICENSE.* README.rst)
+
+#set(CPACK_SET_DESTDIR ON)
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Map generator for Minetest")
+set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_HOME_DIRECTORY}/package-description.txt")
 set(CPACK_PACKAGE_VERSION_MAJOR ${VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${VERSION_MINOR})
-set(CPACK_PACKAGE_VENDOR "celeron55")
-set(CPACK_PACKAGE_CONTACT "Perttu Ahola <celeron55@gmail.com>")
+set(CPACK_PACKAGE_VERSION_PATCH 1)
+set(CPACK_PACKAGE_VENDOR "Minetestmapper")
+set(CPACK_PACKAGE_CONTACT "(Unknown)")
+set(CPACK_PACKAGE_URL "https://github.com/Rogier-5/minetest-mapper-cpp")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "${PROJECT_NAME}-${VERSION_STRING}")
+set(CPACK_PACKAGE_EXECUTABLES minetestmapper)
+set(CPACK_PROJECT_CONFIG_FILE "${PROJECT_BINARY_DIR}/CMakeCPackLists.txt")
+
+# Make install as root leaves a root-owned file behind that interferes
+# with package creation - remove it.
+if(EXISTS install_manifest.txt)
+	file(REMOVE install_manifest.txt)
+endif(EXISTS install_manifest.txt)
+
+set(ARCHIVE_PACKAGE_NAME "" CACHE STRING "Name of the .zip / .tar.gz archive package to be created by cpack (without extension)")
+if(NOT WIN32)
+	set(CREATE_FLAT_PACKAGE TRUE CACHE BOOL "Create the .tar.gz package without included directory hierarchy (must be OFF for 'make install' and to create .deb, .rpm packages)")
+endif(NOT WIN32)
 
 if(WIN32)
-	install(FILES "${PROJECT_BINARY_DIR}/minetestmapper.exe" DESTINATION ".")
-	set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${VERSION_STRING}-win32")
+	set(PACKAGING_FLAT 1)
 	set(CPACK_GENERATOR ZIP)
-else()
-	install(FILES "${PROJECT_BINARY_DIR}/minetestmapper" DESTINATION ".")
-	set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${VERSION_STRING}-linux")
+	set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${VERSION_STRING}-win32")
+
+	install(FILES ${META_FILES} DESTINATION ".")
+	install(FILES "colors.txt" DESTINATION ".")
+	install(PROGRAMS "${PROJECT_BINARY_DIR}/minetestmapper.exe" DESTINATION ".")
+
+elseif(CREATE_FLAT_PACKAGE)
+	set(PACKAGING_FLAT 1)
+	message(WARNING "CREATE_FLAT_PACKAGE is set ON: creating a flat package.\nFor 'make install', .deb and .rpm packages, CREATE_FLAT_PACKAGE must be OFF")
 	set(CPACK_GENERATOR TGZ)
 	set(CPACK_SOURCE_GENERATOR TGZ)
-endif()
+	if(ARCHIVE_PACKAGE_NAME)
+	    set(CPACK_TGZ_PACKAGE_FILE_NAME "${ARCHIVE_PACKAGE_NAME}")
+	else(ARCHIVE_PACKAGE_NAME)
+		if (APPLE)
+			set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${VERSION_MAJOR}-MacOSX-flat")
+		else(APPLE)
+			set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${VERSION_MAJOR}-Linux-flat")
+		endif(APPLE)
+	endif(ARCHIVE_PACKAGE_NAME)
+	message(STATUS "Flat archive package name: ${CPACK_PACKAGE_FILE_NAME}.tar.gz")
+
+	install(FILES ${META_FILES} DESTINATION ".")
+	install(FILES "colors.txt" DESTINATION ".")
+	install(PROGRAMS "${PROJECT_BINARY_DIR}/minetestmapper" DESTINATION ".")
+
+else(WIN32)
+	set(PACKAGING_FLAT 0)
+	set(CPACK_GENERATOR TGZ)
+	set(CPACK_SOURCE_GENERATOR TGZ)
+
+	# Determine binary architecture
+	execute_process(COMMAND ${CMAKE_CXX_COMPILER} -v
+			RESULT_VARIABLE VERSION_EXIT
+			OUTPUT_VARIABLE PACKAGE_TARGET_ARCHITECTURE
+			ERROR_VARIABLE PACKAGE_TARGET_ARCHITECTURE
+			OUTPUT_STRIP_TRAILING_WHITESPACE)
+	string(REGEX REPLACE ".*[\n\r]Target:[ \t\n\r]*([^ \t\n\r]+).*" "\\1" PACKAGE_TARGET_ARCHITECTURE "${PACKAGE_TARGET_ARCHITECTURE}")
+	if(VERSION_EXIT)
+		message(FATAL_ERROR "Could not determine target architecture")
+	elseif(PACKAGE_TARGET_ARCHITECTURE MATCHES "[ \t\n\r]")
+		message(FATAL_ERROR "Could not determine target architecture - error parsing compiler messages")
+	else(VERSION_EXIT)
+		message(STATUS "Target architecture: ${PACKAGE_TARGET_ARCHITECTURE}")
+	endif(VERSION_EXIT)
+
+	# default package name (i.e. for .tar.gz)
+	if(ARCHIVE_PACKAGE_NAME)
+	    set(CPACK_TGZ_PACKAGE_FILE_NAME "${ARCHIVE_PACKAGE_NAME}")
+	else(ARCHIVE_PACKAGE_NAME)
+	    set(CPACK_TGZ_PACKAGE_FILE_NAME "${PROJECT_NAME}-${VERSION_STRING}-${PACKAGE_TARGET_ARCHITECTURE}")
+	endif(ARCHIVE_PACKAGE_NAME)
+	message(STATUS "Archive package name: ${CPACK_TGZ_PACKAGE_FILE_NAME}.tar.gz")
+
+	install(FILES ${META_FILES} DESTINATION "share/doc/${PROJECT_NAME}" COMPONENT mapper)
+	install(FILES colors.txt DESTINATION "share/games/${PROJECT_NAME}" COMPONENT mapper)
+	install(TARGETS minetestmapper RUNTIME DESTINATION bin COMPONENT mapper)
+
+	if(CMAKE_INSTALL_PREFIX STREQUAL "/usr")
+		# Require install prefix to be /usr when building .deb and .rpm packages
+		# (else minetestmapper will not find the default colors.txt file)
+
+		# .deb settings
+		# Debian package building needs xxxxx, but cpack doesn't check for it first...
+		find_program(DPKG_AVAILABLE "dpkg")
+		# Fakeroot is needed to get correct file ownership (root/root) in the package
+		find_program(FAKEROOT_AVAILABLE "fakeroot")
+		if(DPKG_AVAILABLE AND FAKEROOT_AVAILABLE)
+			message(STATUS "dpkg and fakeroot found - enabling .deb package generation")
+			set(CPACK_GENERATOR ${CPACK_GENERATOR} DEB)
+
+			# Cmake does not support delayed variable expansion. No alternative but to compute things ourselves :-((((
+			# Maybe we should be checking PACKAGE_TARGET_ARCHITECTURE as well (and add specific code for every architecture :-()
+			# (on a multiarch system, the only compiler installed may not be the native one...)
+			execute_process(COMMAND dpkg --print-architecture
+					RESULT_VARIABLE VERSION_EXIT
+					OUTPUT_VARIABLE DEBIAN_PACKAGE_ARCHITECTURE
+					ERROR_QUIET
+					OUTPUT_STRIP_TRAILING_WHITESPACE)
+			if(VERSION_EXIT)
+				message(FATAL_ERROR "Could not determine target architecture for debian package")
+			else(VERSION_EXIT)
+				message(STATUS "Debian package architecture: ${DEBIAN_PACKAGE_ARCHITECTURE}")
+			endif(VERSION_EXIT)
+
+			set(CPACK_DEBIAN_PACKAGE_FILE_NAME "${PROJECT_NAME}_${VERSION_STRING}-${CPACK_PACKAGE_VERSION_PATCH}_${DEBIAN_PACKAGE_ARCHITECTURE}")
+			message(STATUS "Debian package name: ${CPACK_DEBIAN_PACKAGE_FILE_NAME}.deb")
+			set(CPACK_DEBIAN_PACKAGE_VERSION "${VERSION_STRING}")
+			file(READ "${CPACK_PACKAGE_DESCRIPTION_FILE}" CPACK_DEBIAN_PACKAGE_DESCRIPTION)
+			# Unfortunately, cpack does not use (and adequately format) the description file - must do it ourselves
+			string(STRIP "${CPACK_DEBIAN_PACKAGE_DESCRIPTION}" CPACK_DEBIAN_PACKAGE_DESCRIPTION)
+			string(REGEX REPLACE "\n" "\n " CPACK_DEBIAN_PACKAGE_DESCRIPTION " ${CPACK_DEBIAN_PACKAGE_DESCRIPTION}")
+			string(REGEX REPLACE "(^ |\n )[ \t]*\n" "\\1.\n" CPACK_DEBIAN_PACKAGE_DESCRIPTION "${CPACK_DEBIAN_PACKAGE_DESCRIPTION}")
+			set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}\n${CPACK_DEBIAN_PACKAGE_DESCRIPTION}")
+			set(CPACK_DEBIAN_PACKAGE_ENHANCES "minetest")
+			set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS 1)
+			set(CPACK_DEBIAN_PACKAGE_SECTION "games")
+			set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "${CPACK_PACKAGE_URL}")
+		else(DPKG_AVAILABLE AND FAKEROOT_AVAILABLE)
+			if(NOT DPKG_AVAILABLE)
+				message(STATUS "dpkg not found - no .deb package will be generated")
+			endif(NOT DPKG_AVAILABLE)
+			if(NOT FAKEROOT_AVAILABLE)
+				message(STATUS "fakeroot not found - no .deb package will be generated")
+			endif(NOT FAKEROOT_AVAILABLE)
+		endif(DPKG_AVAILABLE AND FAKEROOT_AVAILABLE)
+		unset(FAKEROOT_AVAILABLE CACHE)
+		unset(DPKG_AVAILABLE CACHE)
+
+		# .rpm settings
+		# RPM package building needs rpmbuild, but cpack doesn't check for it first...
+		find_program(RPM_AVAILABLE "rpmbuild")
+		if(RPM_AVAILABLE)
+			message(STATUS "rpmbuild found - enabling .rpm package generation")
+			set(CPACK_GENERATOR ${CPACK_GENERATOR} RPM)
+
+			set(CPACK_RPM_PACKAGE_FILE_NAME "${PROJECT_NAME}-${VERSION_STRING}-${CPACK_PACKAGE_VERSION_PATCH}-${PACKAGE_TARGET_ARCHITECTURE}")
+			message(STATUS "Rpm package name: ${CPACK_RPM_PACKAGE_FILE_NAME}.rpm")
+			set(CPACK_RPM_PACKAGE_VERSION "${VERSION_STRING}")
+			set(CPACK_RPM_PACKAGE_GROUP "Amusements/Games")
+			set(CPACK_RPM_PACKAGE_LICENSE "GPLv2.1+")
+			set(CPACK_RPM_PACKAGE_URL "${CPACK_PACKAGE_URL}")
+		else(RPM_AVAILABLE)
+			message(STATUS "rpmbuild not found - no .rpm package will be generated")
+		endif(RPM_AVAILABLE)
+		unset(RPM_AVAILABLE CACHE)
+	else(CMAKE_INSTALL_PREFIX STREQUAL "/usr")
+		message(STATUS "Install prefix is not '/usr' - not building .deb / .rpm packages")
+	endif(CMAKE_INSTALL_PREFIX STREQUAL "/usr")
+
+endif(WIN32)
 
 include(CPack)
+
+# DO this near the end - to make sure all variables have been computed
+# and are final.
+configure_file(
+	"${PROJECT_SOURCE_DIR}/cmake_config.h.in"
+	"${PROJECT_BINARY_DIR}/cmake_config.h"
+)
+add_definitions ( -DUSE_CMAKE_CONFIG_H )
+

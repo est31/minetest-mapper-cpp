@@ -28,6 +28,12 @@ With levelDB and Redis support:
     cmake -DENABLE_LEVELDB=true -DENABLE_REDIS=true .
     make
 
+Create installation package(s):
+
+::
+
+    cpack
+
 Cmake variables:
 ^^^^^^^^^^^^^^^^
 
@@ -45,6 +51,28 @@ ENABLE_ALL_DATABASES:
 
 CMAKE_BUILD_TYPE:
     Type of build: 'Release' or 'Debug'. Defaults to 'Release'.
+
+CREATE_FLAT_PACKAGE:
+    Create a .tar.gz package suitable for installation in a user's private directory.
+    The archive will unpack into a single directory, with the mapper's files inside
+    (this is the default).
+
+    If off, .tar.gz, .deb and .rpm packages suitable for system-wide installation
+    will be created if possible. The tar.gz package will unpack into a directory hierarchy.
+
+    For creation of .deb and .rpm packages, CMAKE_INSTALL_PREFIX must be '/usr'.
+
+    For .deb package creation, dpkg and fakeroot are required.
+
+    For .rpm package creation, rpmbuild is required.
+
+ARCHIVE_PACKAGE_NAME:
+    Name of the .zip or .tar.gz package (without extension). This will also be
+    the name of the directory into which the archive unpacks.
+
+    Defaults to minetestmapper-<version>-<os-type>
+
+    The name of .deb and .rpm packages are *not* affected by this variable.
 
 Usage
 -----
