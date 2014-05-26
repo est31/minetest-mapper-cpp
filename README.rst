@@ -60,6 +60,9 @@ and `-o` (output image path).
 Parameters
 ^^^^^^^^^^
 
+version:
+    Print version ID of minetestmapper.
+
 colors <file>:
     Filename of the color definition file to use.
 

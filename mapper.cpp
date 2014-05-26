@@ -50,6 +50,7 @@ void usage()
 {
 	const char *usage_text = "minetestmapper [options]\n"
 			"  -h/--help\n"
+			"  -V/--version\n"
 			"  -i/--input <world_path>\n"
 			"  -o/--output <output_image.png>\n"
 			"  --colors <file>\n"
@@ -480,6 +481,7 @@ int main(int argc, char *argv[])
 	static struct option long_options[] =
 	{
 		{"help", no_argument, 0, 'h'},
+		{"version", no_argument, 0, 'V'},
 		{"input", required_argument, 0, 'i'},
 		{"output", required_argument, 0, 'o'},
 		{"colors", required_argument, 0, 'C'},
@@ -545,6 +547,10 @@ int main(int argc, char *argv[])
 			switch (c) {
 				case 'h':
 					usage();
+					return 0;
+					break;
+				case 'V':
+					cout << "Minetestmapper - Version-ID: " << VERSION_MAJOR << "." << VERSION_MINOR << std::endl;
 					return 0;
 					break;
 				case 'i':

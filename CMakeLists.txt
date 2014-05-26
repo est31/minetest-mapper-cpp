@@ -3,9 +3,48 @@ cmake_minimum_required(VERSION 2.6)
 cmake_policy(SET CMP0003 NEW)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-set(VERSION_MAJOR 1)
-set(VERSION_MINOR 0)
-set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}")
+# Try to compute a sensible version number.
+# Prefer the output of git describe (if available)
+# Else, use a stored version, and a checksum of the files (and hope that is dependable)
+
+# Obtain stored major version number
+# Make sure cmake is rerun when version has changed
+configure_file(version version.dup COPYONLY)
+file(REMOVE version.dup)
+if(EXISTS "${CMAKE_HOME_DIRECTORY}/version")
+	file(STRINGS "${CMAKE_HOME_DIRECTORY}/version" VERSION_FROM_FILE)
+else(EXISTS "${CMAKE_HOME_DIRECTORY}/version")
+	message(FATAL_ERROR "File '${CMAKE_HOME_DIRECTORY}/version' not found or not readable")
+endif(EXISTS "${CMAKE_HOME_DIRECTORY}/version")
+
+execute_process(COMMAND git describe --long "--match=[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]" --dirty=-WIP --abbrev=8
+		RESULT_VARIABLE VERSION_EXIT OUTPUT_VARIABLE GIT_VERSION ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(VERSION_EXIT)
+	set(VERSION_MAJOR "${VERSION_FROM_FILE}")
+	file(GLOB MAPPER_FILES RELATIVE "${CMAKE_HOME_DIRECTORY}" *.cpp *.h CMakeLists.txt)
+	string(REGEX REPLACE "[^;]" "" MAPPER_FILES_COUNT "${MAPPER_FILES};")
+	string(LENGTH "${MAPPER_FILES_COUNT}" MAPPER_FILES_COUNT)
+	execute_process(COMMAND cmake -E md5sum ${MAPPER_FILES} RESULT_VARIABLE VERSION_EXIT OUTPUT_VARIABLE FILES_MD5SUM ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+	if(VERSION_EXIT)
+		message(STATUS "Could not compute md5sum for files")
+		set(VERSION_MINOR "0")
+	else(VERSION_EXIT)
+		string(MD5 SUMMARY_MD5SUM "${FILES_MD5SUM}")
+		string(SUBSTRING "${SUMMARY_MD5SUM}" 1 16 VERSION_MINOR)
+		set(VERSION_MINOR "N${MAPPER_FILES_COUNT}-CHK${VERSION_MINOR}")
+	endif(VERSION_EXIT)
+	set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}")
+	message(STATUS "No git tree found; stored / computed version: ${VERSION_STRING}")
+else(VERSION_EXIT)
+	string(REGEX REPLACE "-(.*)" ".\\1" VERSION_STRING "${GIT_VERSION}")
+	string(REGEX REPLACE "^([^.]+)\\.(.*)" "\\1" VERSION_MAJOR "${VERSION_STRING}")
+	string(REGEX REPLACE "^([^.]+)\\.(.*)" "\\2" VERSION_MINOR "${VERSION_STRING}")
+	set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}")
+	message(STATUS "Git tree found; git commit version: ${VERSION_STRING}")
+	if(NOT VERSION_STRING STREQUAL VERSION_FROM_FILE AND NOT VERSION_MAJOR STREQUAL VERSION_FROM_FILE)
+		message(STATUS "**NOTE: contents of file 'version' do not match output of 'git describe' (this is harmless)")
+	endif(NOT VERSION_STRING STREQUAL VERSION_FROM_FILE AND NOT VERSION_MAJOR STREQUAL VERSION_FROM_FILE)
+endif(VERSION_EXIT)
 
 # try_compile does not remove the temporary build directory, so put it in CMakeFiles...
 # Also: use absolute paths; cmake chokes on relative paths :-(
