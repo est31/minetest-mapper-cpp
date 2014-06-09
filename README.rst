@@ -89,6 +89,23 @@ colors <file>:
     # Entry that is used with 'drawalpha':
     default:water-source	78 132 212 64 224
 
+    The colors file can include other colors files using:
+    `@include filename`
+    Any entries after the inclusion point override entries from the
+    included file. Already defined colors can be 'undefined' by specifying
+    '-' as color:
+
+::
+
+    default:stone		71 68 67
+    # default-colors.txt might override the color of default:stone
+    @include default-colors.txt
+    # color of default:dirt_with_grass from default-colors.txt is overridden:
+    default:dirt_with_grass	82 117 54
+    # Color of water is undefined here:
+    default:water_source	-
+    default:water_flowing	-
+
 bgcolor:
     Background color of image, `--bgcolor #ffffff`
 

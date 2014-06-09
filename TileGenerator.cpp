@@ -325,9 +325,11 @@ void TileGenerator::setMaxY(int y)
 	m_reqYMaxNode = y - 16 * m_reqYMax;
 }
 
-void TileGenerator::parseColorsFile(const std::string &fileName)
+void TileGenerator::parseColorsFile(const std::string &fileName, int depth)
 {
-	if (verboseReadColors >= 2)
+	if (depth > 100)
+		throw std::runtime_error(std::string("Excessive inclusion depth of colors files - suspected recursion (i.e. cycle); current file: '") + fileName + "'");
+	if (depth == 0 && verboseReadColors >= 2)
 		cout << "Checking for colors file: " << fileName << std::endl;
 	ifstream in;
 	in.open(fileName.c_str(), ifstream::in);
@@ -337,7 +339,7 @@ void TileGenerator::parseColorsFile(const std::string &fileName)
 	}
 	if (verboseReadColors >= 1)
 		cout << "Reading colors file:  " << fileName << std::endl;
-	parseColorsStream(in, fileName.c_str());
+	parseColorsStream(in, fileName.c_str(), depth);
 	in.close();
 }
 
@@ -374,7 +376,7 @@ void TileGenerator::generate(const std::string &input, const std::string &output
 	printUnknown();
 }
 
-void TileGenerator::parseColorsStream(std::istream &in, const std::string &filename)
+void TileGenerator::parseColorsStream(std::istream &in, const std::string &filename, int depth)
 {
 	string line;
 	int linenr = 0;
@@ -388,45 +390,79 @@ void TileGenerator::parseColorsStream(std::istream &in, const std::string &filen
 		iline >> std::skipws;
 		string name;
 		ColorEntry color;
-		iline >> name;
+		iline >> name >> std::ws;
 		if (name.length() == 0)
 			continue;
-		int r, g, b, a, t;
-		iline >> r;
-		iline >> g;
-		iline >> b;
-		if (iline.fail()) {
-			std::cerr << filename << ":" << linenr << ": bad line in colors file (" << line << ")" << std::endl;
-			continue;
-		}
-		a = 0xff;
-		iline >> a;
-		t = 0;
-		iline >> t;
-		color = ColorEntry(r,g,b,a,t);
-		if ((m_drawAlpha && a == 0xff) || (!m_drawAlpha && a != 0xff)) {
-			// If drawing alpha, and the colors file contains both
-			// an opaque entry and a non-opaque entry for a name, prefer
-			// the non-opaque entry
-			// If not drawing alpha, and the colors file contains both
-			// an opaque entry and a non-opaque entry for a name, prefer
-			// the opaque entry
-			// Otherwise, any later entry overrides any previous entry
-			ColorMap::iterator it = m_colors.find(name);
-			if (it != m_colors.end()) {
-				if (m_drawAlpha && (a == 0xff && it->second.a != 0xff)) {
-					// drawing alpha: don't use opaque color to override
-					// non-opaque color
-					continue;
-				}
-				if (!m_drawAlpha && (a != 0xff && it->second.a == 0xff)) {
-					// not drawing alpha: don't use non-opaque color to
-					// override opaque color
-					continue;
+		if (name == "@include") {
+			string includeFile;
+			getline(iline,includeFile);
+			size_t lastChar = includeFile.find_last_not_of(" \t\r\n");
+			if (lastChar != string::npos)
+				includeFile.erase(lastChar + 1);
+			if (includeFile == "") {
+				std::cerr << filename << ":" << linenr << ": include filename missing in colors file (" << line << ")" << std::endl;
+				continue;
+			}
+#if ! (MSDOS || __OS2__ || __NT__ || _WIN32)
+			// This same feature seems needlessly complicated on windows - so it is not supported
+			if (includeFile[0] != '/') {
+				string includePath = filename;
+				size_t offset = includePath.find_last_of('/');
+				if (offset != string::npos) {
+					includePath.erase(offset);
+					includeFile = includePath + '/' + includeFile;
 				}
 			}
+#endif
+			parseColorsFile(includeFile, depth + 1);
 		}
-		m_colors[name] = color;
+		else if (iline.good() && iline.peek() == '-') {
+			char c;
+			iline >> c >> std::ws;
+			if (iline.bad() || !iline.eof()) {
+				std::cerr << filename << ":" << linenr << ": bad line in colors file (" << line << ")" << std::endl;
+				continue;
+			}
+			m_colors.erase(name);
+		}
+		else {
+			int r, g, b, a, t;
+			iline >> r;
+			iline >> g;
+			iline >> b;
+			if (iline.fail()) {
+				std::cerr << filename << ":" << linenr << ": bad line in colors file (" << line << ")" << std::endl;
+				continue;
+			}
+			a = 0xff;
+			iline >> a;
+			t = 0;
+			iline >> t;
+			color = ColorEntry(r,g,b,a,t);
+			if ((m_drawAlpha && a == 0xff) || (!m_drawAlpha && a != 0xff)) {
+				// If drawing alpha, and the colors file contains both
+				// an opaque entry and a non-opaque entry for a name, prefer
+				// the non-opaque entry
+				// If not drawing alpha, and the colors file contains both
+				// an opaque entry and a non-opaque entry for a name, prefer
+				// the opaque entry
+				// Otherwise, any later entry overrides any previous entry
+				ColorMap::iterator it = m_colors.find(name);
+				if (it != m_colors.end()) {
+					if (m_drawAlpha && (a == 0xff && it->second.a != 0xff)) {
+						// drawing alpha: don't use opaque color to override
+						// non-opaque color
+						continue;
+					}
+					if (!m_drawAlpha && (a != 0xff && it->second.a == 0xff)) {
+						// not drawing alpha: don't use non-opaque color to
+						// override opaque color
+						continue;
+					}
+				}
+			}
+			m_colors[name] = color;
+		}
 	}
 	if (!in.eof()) {
 		std::cerr << filename << ": error reading colors file after line " << linenr << std::endl;

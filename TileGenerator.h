@@ -105,12 +105,12 @@ public:
 	void setTileOrigin(int x, int y);
 	void setTileCenter(int x, int y);
 	void enableProgressIndicator(void);
-	void parseColorsFile(const std::string &fileName);
+	void parseColorsFile(const std::string &fileName, int depth = 0);
 	void setBackend(std::string backend);
 	void generate(const std::string &input, const std::string &output);
 
 private:
-	void parseColorsStream(std::istream &in, const std::string &filename);
+	void parseColorsStream(std::istream &in, const std::string &filename, int depth);
 	std::string getWorldDatabaseBackend(const std::string &input);
 	void openDb(const std::string &input);
 	void loadBlocks();
