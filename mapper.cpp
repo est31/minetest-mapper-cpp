@@ -25,6 +25,7 @@ using namespace std;
 #define OPT_SQLITE_CACHEWORLDROW	0x81
 #define OPT_PROGRESS_INDICATOR		0x82
 #define OPT_DRAW_OBJECT			0x83
+#define OPT_VERBOSE_SEARCH_COLORS	0x86
 
 // Will be replaced with the actual name and location of the executable (if found)
 string executableName = "minetestmapper";
@@ -94,6 +95,7 @@ void usage()
 			"  --tileorigin <x>,<y>|world|map\n"
 			"  --tilecenter <x>,<y>|world|map\n"
 			"  --verbose[=n]\n"
+			"  --verbose-search-colors[=n]\n"
 			"  --progress\n"
 			"Color formats:\n"
 			"\t'#000' or '#000000'                                  (RGB)\n"
@@ -548,6 +550,7 @@ int main(int argc, char *argv[])
 		{"tilecenter", required_argument, 0, 'T'},
 		{"tilebordercolor", required_argument, 0, 'B'},
 		{"verbose", optional_argument, 0, 'v'},
+		{"verbose-search-colors", optional_argument, 0, OPT_VERBOSE_SEARCH_COLORS},
 		{"progress", no_argument, 0, OPT_PROGRESS_INDICATOR},
 		{NULL, 0, 0, 0}
 	};
@@ -625,6 +628,14 @@ int main(int argc, char *argv[])
 					else {
 						generator.verboseStatistics = true;
 						generator.verboseCoordinates = 1;
+					}
+					break;
+				case OPT_VERBOSE_SEARCH_COLORS:
+					if (optarg && isdigit(optarg[0]) && optarg[1] == '\0') {
+						generator.verboseReadColors = optarg[0] - '0';
+					}
+					else {
+						generator.verboseReadColors++;
 					}
 					break;
 				case 'e':

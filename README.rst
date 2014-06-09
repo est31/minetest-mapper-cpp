@@ -339,3 +339,8 @@ verbose:
 
     * database access statistics.
 
+verbose-search-colors:
+    report the location of the colors file that was used.
+
+    With `--verbose-search-colors=2`, report all locations that are being
+    searched as well.

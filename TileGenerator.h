@@ -153,6 +153,7 @@ private:
 
 public:
 	int verboseCoordinates;
+	int verboseReadColors;
 	bool verboseStatistics;
 	bool progressIndicator;
 

@@ -118,6 +118,7 @@ static inline int readBlockContent(const unsigned char *mapData, int version, in
 
 TileGenerator::TileGenerator():
 	verboseCoordinates(0),
+	verboseReadColors(0),
 	verboseStatistics(false),
 	progressIndicator(false),
 	m_bgColor(255, 255, 255),
@@ -326,12 +327,16 @@ void TileGenerator::setMaxY(int y)
 
 void TileGenerator::parseColorsFile(const std::string &fileName)
 {
+	if (verboseReadColors >= 2)
+		cout << "Checking for colors file: " << fileName << std::endl;
 	ifstream in;
 	in.open(fileName.c_str(), ifstream::in);
 	if (!in.is_open()) {
 		throw std::runtime_error(std::string("Failed to open colors file '") + fileName + "'");
 		return;
 	}
+	if (verboseReadColors >= 1)
+		cout << "Reading colors file:  " << fileName << std::endl;
 	parseColorsStream(in, fileName.c_str());
 	in.close();
 }
