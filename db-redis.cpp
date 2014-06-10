@@ -146,7 +146,7 @@ const DB::BlockPosList &DBRedis::getBlockPos()
 	if(reply->type != REDIS_REPLY_ARRAY)
 		throw std::runtime_error("Failed to get keys from database");
 	for(size_t i = 0; i < reply->elements; i++) {
-		if(!reply->element[i]->type == REDIS_REPLY_STRING)
+		if(reply->element[i]->type != REDIS_REPLY_STRING)
 			throw std::runtime_error("Got wrong response to 'HKEYS %s' command");
 		m_blockPosList.push_back(stoi64(reply->element[i]->str));
 	}
