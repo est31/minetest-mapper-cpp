@@ -105,7 +105,7 @@ DB::Block DBSQLite3::getBlockOnPosRaw(const BlockPos &pos)
 	Block block(pos,reinterpret_cast<const unsigned char *>(""));
 	int result = 0;
 
-	sqlite3_bind_int64(m_blockOnPosStatement, 1, pos.databasePos());
+	sqlite3_bind_int64(m_blockOnPosStatement, 1, pos.databasePosI64());
 
 	while (true) {
 		result = sqlite3_step(m_blockOnPosStatement);
@@ -151,12 +151,12 @@ DB::Block DBSQLite3::getBlockOnPos(const BlockPos &pos)
 	m_blocksReadCount++;
 
 	BlockCache::const_iterator DBBlockSearch;
-	DBBlockSearch = m_blockCache.find(pos.databasePos());
+	DBBlockSearch = m_blockCache.find(pos.databasePosI64());
 	if (DBBlockSearch == m_blockCache.end()) {
 		if (cacheWorldRow) {
 			m_blockCache.clear();
 			cacheBlocksOnZRaw(pos.z);
-			DBBlockSearch = m_blockCache.find(pos.databasePos());
+			DBBlockSearch = m_blockCache.find(pos.databasePosI64());
 			if (DBBlockSearch != m_blockCache.end()) {
 				return Block(pos, DBBlockSearch->second);
 			}

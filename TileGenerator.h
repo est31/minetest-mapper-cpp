@@ -116,7 +116,6 @@ private:
 	std::string getWorldDatabaseBackend(const std::string &input);
 	void openDb(const std::string &input);
 	void loadBlocks();
-	BlockPos decodeBlockPos(int64_t blockId) const;
 	void createImage();
 	void computeMapParameters();
 	void computeTileParameters(

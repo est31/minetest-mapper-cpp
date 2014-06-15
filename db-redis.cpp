@@ -148,7 +148,7 @@ const DB::BlockPosList &DBRedis::getBlockPos()
 	for(size_t i = 0; i < reply->elements; i++) {
 		if(reply->element[i]->type != REDIS_REPLY_STRING)
 			throw std::runtime_error("Got wrong response to 'HKEYS %s' command");
-		m_blockPosList.push_back(stoi64(reply->element[i]->str));
+		m_blockPosList.push_back(BlockPos(reply->element[i]->str));
 	}
 	
 	freeReplyObject(reply);
@@ -164,8 +164,7 @@ DB::Block DBRedis::getBlockOnPos(const BlockPos &pos)
 
 	m_blocksReadCount++;
 
-	tmp = i64tos(pos.databasePos());
-	reply = (redisReply*) redisCommand(ctx, "HGET %s %s", hash.c_str(), tmp.c_str());
+	reply = (redisReply*) redisCommand(ctx, "HGET %s %s", hash.c_str(), pos.databasePosStr().c_str());
 	if(!reply)
 		throw std::runtime_error(std::string("redis command 'HGET %s %s' failed: ") + ctx->errstr);
 	if (reply->type == REDIS_REPLY_STRING && reply->len != 0) {

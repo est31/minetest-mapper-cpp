@@ -5,8 +5,23 @@
 #include <cstdlib>
 #include <limits>
 #include <climits>
+#include <cctype>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include <stdexcept>
 
 struct BlockPos {
+	// m_strFormat is used to record the original format that was obtained
+	// from the database (and thus, the format to use when querying
+	// the database again). DO NOT USE M_STRfORMAT FOR ANYTHING ELSE.
+	// Use the argument to databasePosStrFmt to force a specific display format.
+	enum StrFormat {
+		Unknown = 0,
+		I64,		// Minetest & Freeminer
+		XYZ,
+		AXYZ,		// Freeminer
+	};
 	int dimension[3];
 	// Unfortunately, static member references are not supported (even though static member pointers are...)
 	// I'd like to have:
@@ -16,20 +31,24 @@ struct BlockPos {
 	int &y = dimension[1];
 	int &z = dimension[2];
 //#if SIZE_MAX > (1LL << 36)
-//	std::size_t hash(void) const { return databasePos(); }
+//	std::size_t hash(void) const { return databasePosI64(); }
 //#else
-//	std::size_t hash(void) const { return databasePos() % SIZE_MAX; }
+//	std::size_t hash(void) const { return databasePosI64() % SIZE_MAX; }
 //#endif
-	BlockPos() : dimension{0, 0, 0} {}
-	BlockPos(int _x, int _y, int _z) : dimension{_x, _y, _z} {}
-	BlockPos(const BlockPos &pos) : dimension{pos.x, pos.y, pos.z} {}
-	BlockPos(int64_t i) { setFromDBPos(i); }
-	int64_t databasePos(void) const { return getDBPos(); }
+	BlockPos() : dimension{0, 0, 0}, m_strFormat(Unknown) {}
+	BlockPos(int _x, int _y, int _z) : dimension{_x, _y, _z}, m_strFormat(Unknown) {}
+	BlockPos(const BlockPos &pos) : dimension{pos.x, pos.y, pos.z}, m_strFormat(pos.m_strFormat) {}
+	BlockPos(int64_t i) { operator=(i); }
+	BlockPos(const std::string &s) { operator=(s); }
+	int64_t databasePosI64(void) const { return getDBPos(); }
+	std::string databasePosStr(StrFormat defaultFormat = Unknown) const;
+	std::string databasePosStrFmt(StrFormat format) const;
 
 	bool operator<(const BlockPos& p) const;
 	bool operator==(const BlockPos& p) const;
-	void operator=(const BlockPos &p) { x = p.x; y = p.y; z = p.z; }
-	void operator=(int64_t i) { setFromDBPos(i); }
+	void operator=(const BlockPos &p) { x = p.x; y = p.y; z = p.z; m_strFormat = p.m_strFormat; }
+	void operator=(int64_t i) { setFromDBPos(i); m_strFormat = I64; }
+	void operator=(const std::string &s);
 
 	static const int Any = INT_MIN;
 	static const int Invalid = INT_MAX;
@@ -40,6 +59,10 @@ protected:
 //	setFromDBPos(int64_t i);
 //	int64_t getDBPos(void) const;
 #include "minetest-database.h"
+
+private:
+	// WARNING: see comment about m_strFormat above !!
+	StrFormat m_strFormat;
 
 };
 
@@ -89,6 +112,66 @@ namespace std {
 	{
 		size_t operator()(const NodeCoordHashed &nch) const { return nch.hash(); }
 	};
+}
+
+inline void BlockPos::operator=(const std::string &s)
+{
+	std::istringstream is(s);
+	if (isdigit(is.peek()) || is.peek() == '-' || is.peek() == '+') {
+		int64_t ipos;
+		is >> ipos;
+		if (is.bad() || !is.eof()) {
+			throw std::runtime_error(std::string("Failed to decode i64 (minetest) coordinate string from database (") + s + ")" );
+		}
+		operator=(ipos);
+		m_strFormat = I64;
+	}
+	else if (is.peek() == 'a') {
+		// Freeminer new format (a<x>,<y>,<z>)
+		char c1, c2;
+		is >> c1;
+		is >> x;
+		is >> c1;
+		is >> y;
+		is >> c2;
+		is >> z;
+		if (is.bad() || !is.eof() || c1 != ',' || c2 != ',') {
+			throw std::runtime_error(std::string("Failed to decode axyz (freeminer) coordinate string from database (") + s + ")" );
+		}
+		m_strFormat = AXYZ;
+	}
+	else {
+		throw std::runtime_error(std::string("Failed to detect format of coordinate string from database (") + s + ")" );
+	}
+}
+
+inline std::string BlockPos::databasePosStr(StrFormat defaultFormat) const
+{
+	StrFormat format = m_strFormat;
+	if (format == Unknown)
+		format = defaultFormat;
+	return databasePosStrFmt(format);
+}
+
+
+inline std::string BlockPos::databasePosStrFmt(StrFormat format) const
+{
+	std::ostringstream os;
+	switch(format) {
+	case Unknown:
+		throw std::runtime_error(std::string("Internal error: Converting BlockPos to unknown string type"));
+		break;
+	case I64:
+		os << databasePosI64();
+		break;
+	case XYZ:
+		os << x << ',' << y << ',' << z;
+		break;
+	case AXYZ:
+		os << 'a' << x << ',' << y << ',' << z;
+		break;
+	}
+	return os.str();
 }
 
 // operator< should order the positions in the

@@ -636,7 +636,7 @@ void TileGenerator::loadBlocks()
 	map_blocks = 0;
 	for(DB::BlockPosList::const_iterator it = blocks.begin(); it != blocks.end(); ++it) {
 		world_blocks ++;
-		BlockPos pos = *it;
+		const BlockPos &pos = *it;
 		if (pos.x < mapXMin) {
 			mapXMin = pos.x;
 		}
@@ -788,17 +788,6 @@ void TileGenerator::loadBlocks()
 	}
 	m_positions.sort();
 	#undef MESSAGE_WIDTH
-}
-
-inline BlockPos TileGenerator::decodeBlockPos(int64_t blockId) const
-{
-	BlockPos pos;
-	pos.x = unsignedToSigned(pythonmodulo(blockId, 4096), 2048);
-	blockId = (blockId - pos.x) / 4096;
-	pos.y = unsignedToSigned(pythonmodulo(blockId, 4096), 2048);
-	blockId = (blockId - pos.y) / 4096;
-	pos.z = unsignedToSigned(pythonmodulo(blockId, 4096), 2048);
-	return pos;
 }
 
 void TileGenerator::pushPixelRows(int zPosLimit) {
@@ -1175,7 +1164,7 @@ void TileGenerator::renderMap()
 			}
 			catch (UnpackError &e) {
 				std::cerr << "Failed to unpack map block " << pos.x << "," << pos.y << "," << pos.z
-					<< " (id: " << pos.databasePos() << "). Block corrupt ?"
+					<< " (id: " << pos.databasePosStr(BlockPos::I64) << "). Block corrupt ?"
 					<< std::endl
 					<< "\tCoordinates: " << pos.x*16 << "," << pos.y*16 << "," << pos.z*16 << "+16+16+16"
 					<< ";  Data: " << e.type << " at: " << e.offset << "(+" << e.length <<  ")/" << e.dataLength
@@ -1184,7 +1173,7 @@ void TileGenerator::renderMap()
 			}
 			catch (ZlibDecompressor::DecompressError &e) {
 				std::cerr << "Failed to decompress data in map block " << pos.x << "," << pos.y << "," << pos.z
-					<< " (id: " << pos.databasePos() << "). Block corrupt ?"
+					<< " (id: " << pos.databasePosStr(BlockPos::I64) << "). Block corrupt ?"
 					<< std::endl
 					<< "\tCoordinates: " << pos.x*16 << "," << pos.y*16 << "," << pos.z*16 << "+16+16+16"
 					<< ";  Cause: " << e.message

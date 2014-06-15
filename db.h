@@ -13,7 +13,7 @@
 class DB {
 public:
 	typedef std::pair<BlockPos, ustring> Block;
-	typedef std::vector<int64_t>  BlockPosList;
+	typedef std::vector<BlockPos>  BlockPosList;
 	virtual const BlockPosList &getBlockPos()=0;
 	virtual int getBlocksUnCachedCount(void)=0;
 	virtual int getBlocksCachedCount(void)=0;

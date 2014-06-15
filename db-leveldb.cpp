@@ -50,7 +50,7 @@ const DB::BlockPosList &DBLevelDB::getBlockPos() {
 	m_blockPosList.clear();
 	leveldb::Iterator* it = m_db->NewIterator(leveldb::ReadOptions());
 	for (it->SeekToFirst(); it->Valid(); it->Next()) {
-		m_blockPosList.push_back(stoi64(it->key().ToString()));
+		m_blockPosList.push_back(BlockPos(it->key().ToString()));
 	}
 	delete it;
 	return m_blockPosList;
@@ -63,7 +63,7 @@ DB::Block DBLevelDB::getBlockOnPos(const BlockPos &pos)
 
 	m_blocksReadCount++;
 
-	status = m_db->Get(leveldb::ReadOptions(), i64tos(pos.databasePos()), &datastr);
+	status = m_db->Get(leveldb::ReadOptions(), pos.databasePosStr(), &datastr);
 	if(status.ok()) {
 		m_blocksUnCachedCount++;
 		return Block(pos, ustring(reinterpret_cast<const unsigned char *>(datastr.c_str()), datastr.size()));
