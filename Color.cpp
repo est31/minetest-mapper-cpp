@@ -1,6 +1,7 @@
 
 #include <cctype>
 #include <stdexcept>
+#include <cstdlib>
 #include "Color.h"
 
 // alpha:
