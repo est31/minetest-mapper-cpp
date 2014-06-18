@@ -134,6 +134,7 @@ TileGenerator::TileGenerator():
 	m_drawPlayers(false),
 	m_drawScale(false),
 	m_drawAlpha(false),
+	m_darkenHighAlpha(false),
 	m_drawAir(false),
 	m_shading(true),
 	m_border(0),
@@ -267,9 +268,10 @@ void TileGenerator::setDrawScale(bool drawScale)
 	}
 }
 
-void TileGenerator::setDrawAlpha(bool drawAlpha)
+void TileGenerator::setDrawAlpha(bool drawAlpha, bool darkenHighAlpha)
 {
     m_drawAlpha = drawAlpha;
+    m_darkenHighAlpha = darkenHighAlpha;
 }
 
 void TileGenerator::setDrawAir(bool drawAir)
@@ -1235,7 +1237,7 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 					rowIsEmpty = false;
 					#define nodeColor (*m_nodeIDColor[content])
 					//const ColorEntry &nodeColor = *m_nodeIDColor[content];
-					pixel.mixUnder(PixelAttribute(nodeColor, pos.y * 16 + y));
+					pixel.mixUnder(PixelAttribute(nodeColor, pos.y * 16 + y), m_darkenHighAlpha);
 					if ((m_drawAlpha && nodeColor.a == 0xff) || (!m_drawAlpha && nodeColor.a != 0)) {
 						m_readedPixels[z] |= (1 << x);
 						break;

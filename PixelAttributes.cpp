@@ -142,7 +142,7 @@ void PixelAttributes::renderShading(bool drawAlpha)
 	m_firstUnshadedY = y - yCoord2Line(0);
 }
 
-void PixelAttribute::mixUnder(const PixelAttribute &p)
+void PixelAttribute::mixUnder(const PixelAttribute &p, bool darkenHighAlpha)
 {
 	if (!is_valid() || a == 0) {
 		if (!is_valid() || p.a != 0) {
@@ -163,7 +163,7 @@ void PixelAttribute::mixUnder(const PixelAttribute &p)
 		if (p.a != 1)
 			t = (t + p.t) / 2;
 		h = p.h;
-		if (prev_alpha >= 254 && p.alpha() < 255) {
+		if (prev_alpha >= 254 && p.alpha() < 255 && darkenHighAlpha) {
 			// Darken
 			// Parameters make deep water look good :-)
 			r = r * 0.95;

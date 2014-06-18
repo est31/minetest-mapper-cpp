@@ -71,7 +71,7 @@ void usage()
 			"  --drawscale\n"
 			"  --drawplayers\n"
 			"  --draworigin\n"
-			"  --drawalpha\n"
+			"  --drawalpha[=[no]darken]\n"
 			"  --drawair\n"
 			"  --draw[map]point \"<x>,<y> color\"\n"
 			"  --draw[map]line \"<geometry> color\"\n"
@@ -527,7 +527,7 @@ int main(int argc, char *argv[])
 		{"draworigin", no_argument, 0, 'R'},
 		{"drawplayers", no_argument, 0, 'P'},
 		{"drawscale", no_argument, 0, 'S'},
-		{"drawalpha", no_argument, 0, 'e'},
+		{"drawalpha", optional_argument, 0, 'e'},
 		{"drawair", no_argument, 0, OPT_DRAWAIR},
 		{"drawpoint", required_argument, 0, OPT_DRAW_OBJECT},
 		{"drawline", required_argument, 0, OPT_DRAW_OBJECT},
@@ -648,7 +648,17 @@ int main(int argc, char *argv[])
 					}
 					break;
 				case 'e':
-					generator.setDrawAlpha(true);
+					if (optarg && string(optarg) == "darken")
+						generator.setDrawAlpha(true, true);
+					else if (optarg && string(optarg) == "nodarken")
+						generator.setDrawAlpha(true, false);
+					else if (!optarg)
+						generator.setDrawAlpha(true);
+					else {
+						std::cerr << "Invalid parameter to '" << long_options[option_index].name << "': '" << optarg << "'" << std::endl;
+						usage();
+						exit(1);
+					}
 					break;
 				case OPT_DRAWAIR:
 					generator.setDrawAir(true);

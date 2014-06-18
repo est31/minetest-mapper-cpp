@@ -39,7 +39,7 @@ struct PixelAttribute {
 
 	inline bool is_valid() const { return !isnan(h); }
 	PixelAttribute &operator=(const PixelAttribute &p);
-	void mixUnder(const PixelAttribute &p);
+	void mixUnder(const PixelAttribute &p, bool darkenHighAlpha);
 };
 
 class PixelAttributes

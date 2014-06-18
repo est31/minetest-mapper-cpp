@@ -176,8 +176,22 @@ drawplayers:
 draworigin:
     Draw origin indicator, `--draworigin`
 
-drawalpha:
-    Allow blocks to be drawn with transparency, `--drawalpha`
+drawalpha[=darken|nodarken]:
+    Allow blocks to be drawn with transparency, `--drawalpha=darken`
+
+    Even with drawalpha, transparency decreases with depth. After a certain
+    number of transparent blocks (e.g. water depth), the color will become opaque,
+    and the underlying colors will no longer shine through. The height differences
+    *will* still be visible though.
+
+    With 'darken', after the color becomes opaque, it will gradually be darkened
+    to visually simulate the bigger thickness of transparent blocks. The downside
+    is that eventually, the color becomes black.
+
+    Darken mode makes deeper, but not too deep water look much better. Very deep water
+    will become black though.
+
+    With nodarken (default), after it becomes opaque, the color will not be darkened.
 
 drawair:
     Draw air blocks. `--drawair`
