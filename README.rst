@@ -103,6 +103,10 @@ colors <file>:
 
     * In the user's private directory ($HOME/.minetest)
 
+    * In the system directory correpsonding to the location where minetestmapper
+      is installed. Usually, this would be /usr/share/games/minetestmapper/colors.txt
+      or /usr/local/share/games/minetestmapper/colors.txt
+
     * For compatibility, in the current directory as a last resort.
       This causes a warning message to be printed.
 
@@ -118,7 +122,11 @@ colors <file>:
     default:water-source	78 132 212 64 224
 
     The colors file can include other colors files using:
-    `@include filename`
+
+::
+
+    @include filename
+
     Any entries after the inclusion point override entries from the
     included file. Already defined colors can be 'undefined' by specifying
     '-' as color:
@@ -172,7 +180,7 @@ drawalpha:
     Allow blocks to be drawn with transparency, `--drawalpha`
 
 drawair:
-    Draw air blocks (at a significant performance penalty). `--drawair`
+    Draw air blocks. `--drawair`
 
     For best results, the air color should be defined as fully transparent
     so that the color of underlying blocks overrides it.
@@ -322,7 +330,8 @@ tiles <tilesize>[+<border>]
 
     NOTE: As a consequence of preserving all map pixels:
 
-    * tiled maps may look slightly distorted, due to the inserted borders.
+    * tiled maps (in particular slanted straight lines) may look slightly
+      skewed, due to the inserted borders.
 
     * scale markers never align with tile borders, as the borders are
       logically *between* pixels, so they have no actual coordinates.
@@ -400,7 +409,7 @@ verbose:
     * database access statistics.
 
 verbose-search-colors:
-    report the location of the colors file that was used.
+    report the location of the colors file(s) that are read.
 
     With `--verbose-search-colors=2`, report all locations that are being
-    searched as well.
+    considered as well.
