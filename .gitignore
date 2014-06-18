@@ -6,4 +6,7 @@ CPack*
 Makefile
 cmake_install.cmake
 cmake_config.h
+*.deb
+*.rpm
+*.tar.gz
 *~
