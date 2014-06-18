@@ -1,9 +1,73 @@
+[18 jun 2014]
+    Features:
+	- The package generation code for Linux was extensively reworked and
+		extended.
+		Besides two types of .tar.gz packages, .deb and .rpm packages
+		can now be generated as well. In addition, make install now
+		installs packages in an appropriate directory hierarchy.
+
+		The rpm package has an installation glitch: it tries to create
+		a directory which already exists (system default), causing an
+		installation conflict. This is harmless, but the rpm package must
+		therefore be installed with --replacefiles.
+
+		Package generation on OSX and Windows platforms remains unchanged.
+	- 'Air' nodes can now have a color. Their color should be defined as fully
+		transparent (alpha = 0), so that they don't obscure underlying blocks.
+		With alpha = 0, air will only be drawn if no other blocks are beneath it.
+		As it comes at a significant performance penalty, this feature is
+		subject to a command-line option: --drawair.
+
+		Full transparency is supported for other blocks as well, enabled by
+		setting their alpha value to 0.  Nodes with alpha value 0 never
+		participate in shading.
+	- A default color can be specified for invisible/undefined nodes in rendered
+		blocks. Normally, such nodes are not drawn, so they have the background
+		color; If a different default color is specified, undefined/invisible
+		nodes in defined blocks get the default color, and can be distinguished
+		from undefined blocks (which still have the regular background color).
+
+		This option is really only useful to get a better idea of what is
+		actually in the database.
+	- A color file can now include other color files. It is therefore no longer
+		necessary to create an entirely new copy to be able to change one
+		or two colors. Instead, an empty file can be created. In that file,
+		the master copy is simply referred to ('@include <master>'), and then
+		just the desired differences are added to it.
+		It is not only possible to override colors in the new file, but
+		colors can also be undefined if necessary.
+	- Freeminer maps are now supported (and tested).
+		In particular, this means that the new key format used in the leveldb
+		database (a<x>,<y>,<z>) is now supported.
+
+		Please note that freeminer maps will probably contain a lot of holes and
+		other 'unrendered' areas (e.g. missing plains, making the grey rocks
+		beneath visible; missing water, showing only the bottom of the lake/sea,
+		etc.
+		This is caused by the fact the freeminer does not store unchanged blocks
+		in the database, but prefers to regenerate them later. As minetestmapper
+		can only render what's in the database, this causes the holes etc.
+
+    Enhancements:
+	- Minetestmapper now has a version number (which is (partially) computed).
+	- A system-wide colors.txt file is now supported as well. Its location is
+		hardcoded at compile-time.
+	- Redis support is now fully tested.
+	- A command-line option to report which colors file(s) are read was added.
+
+    Bugfixes:
+	- Fixed the bug which caused compilation to fail if CMAKE_BUILD_TYPE was not
+		configured.
+	- Computation of transparency for nodes was improved / fixed
+	- The return value of a redis database operation was not correctly
+		checked. This was fixed.
+
 [22 may 2014]
     General: integrated all (relevant) patches from the minetest/minetestmapper tree
-    	(only patches that actually conflict with my work were obviously not merged)
+	(only patches that actually conflict with my work were obviously not merged)
 
     Features:
-    	- redis backend support (merged from minetest/minetestmapper)
+	- redis backend support (merged from minetest/minetestmapper)
 		The code was ported and compiles. Unfortunately, I wasn't able
 		to test against a redis database yet.
 	- The database backend to use is now obtained from the world.mt file by default
@@ -12,22 +76,11 @@
 		are: point, line, rectangle, ellipse (circle), text.
 		Translucency (alpha) is supported, although for ellipses, it does not
 		work as expected (due to a bug in libgd)
-	- 'air' nodes can now have a color. Their color should be defined as fully
-		transparent (alpha = 0), so that they don't obscure underlying blocks.
-		In that case, air will only be drawn if no other blocks are beneath it.
-		Nodes with alpha value 0 never participate in shading.
-		As this comes at a significant performance penalty, this feature is
-		subject to a command-line option: --drawair.
-	- A default color can be specified for invisible/undefined nodes in rendered
-		blocks Normally, such nodes are not drawn, so they have the background
-		color; If a different default color is specified, undefined/invisible
-		nodes in defined blocks get the default color, and can be distinguished
-		from undefined blocks (which still have the regular background color).
 
     Enhancements:
-    	- Failure to process a command-line option now causes a specific error message.
+	- Failure to process a command-line option now causes a specific error message.
 		The generic help message is often not very helpful in such a case.
-    	- The map origin color and Player colors can now be specified with an alpha value.
+	- The map origin color and Player colors can now be specified with an alpha value.
 		Unfortunately, due to a bug in libgd, the effect is not what it should be...
 	- The colors.txt file is now also searched for in the world's minetest directory
 		(the directory containing minetest.conf) - if it can be found.
@@ -49,18 +102,18 @@
 	- The configuration of tiles location was improved
 
     Bugfixes:
-    	- When not using a geometry option, *do* generate the smallest possible map
+	- When not using a geometry option, *do* generate the smallest possible map
 	- Fix transparency computation - libgd uses 0..127 (not 255)
 	- Using an invalid option name no longer causes a crash, but is reported.
 	- Fixed a crash when the top part of the generated map is empty
 	- The computation of map size with tiles was fixed (height could be miscomputed)
-    	
+
 [16 apr 2014]
     General: integrated all (relevant) patches from the minetest/minetestmapper tree
-    	(only patches that actually conflict with my work were obviously not merged)
+	(only patches that actually conflict with my work were obviously not merged)
 
     Features:
-    	- A grid can now be added to the map ( with '--tiles')
+	- A grid can now be added to the map ( with '--tiles')
 		Gridlines are drawn 'between' map rows/columns, and therefore do
 		not obscure map data. (as a consequence, straight lines may not look
 		straight where they cross gridlines).
@@ -80,18 +133,18 @@
 		warning message.
 
     Enhancements:
-    	- Colors.txt is no longer included in the executable (merged from minetest/minetestmapper)
+	- Colors.txt is no longer included in the executable (merged from minetest/minetestmapper)
 	- Option and colors parsing failures are handled more gracefully
-	
+
     Bugfixes:
-    	- The computation of origin location and player locations was fixed (off-by-one)
+	- The computation of origin location and player locations was fixed (off-by-one)
 	- Colors.txt is now parsed line-by-line, and errors are reported.
 		Errors no longer cause the remainder of the file to be silently ignored.
 	- A failure to create the image for lack of memory is now caught.
 		When a lack of memory is to be expected during image generation, a warning is printed
 		before image generation starts.
 	- The handling of an alpha component in colors was fixed
-	
+
 [26 mar 2014]
 
     Features:
