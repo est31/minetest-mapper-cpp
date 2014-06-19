@@ -48,7 +48,7 @@ void PixelAttributes::setParameters(int width, int lines)
 	}
 	for (int i=0; i<m_lineCount; i++)
 		for (int j=0; j<m_width; j++) {
-			m_pixelAttributes[i][j].a=0;
+			m_pixelAttributes[i][j].m_a=0;
 			m_pixelAttributes[i][j].next16Empty = (j - 1) % 16 == 0;
 		}
 }
@@ -119,11 +119,11 @@ void PixelAttributes::renderShading(bool drawAlpha)
 			}
 			if (!m_pixelAttributes[y][x - 1].is_valid())
 				continue;
-			if (!m_pixelAttributes[y][x].a)
+			if (!m_pixelAttributes[y][x].m_a)
 				continue;
-			double h = m_pixelAttributes[y][x].h;
-			double h1 = m_pixelAttributes[y][x - 1].a ? m_pixelAttributes[y][x - 1].h : h;
-			double h2 = m_pixelAttributes[y - 1][x].a ? m_pixelAttributes[y - 1][x].h : h;
+			double h = m_pixelAttributes[y][x].m_h;
+			double h1 = m_pixelAttributes[y][x - 1].m_a ? m_pixelAttributes[y][x - 1].m_h : h;
+			double h2 = m_pixelAttributes[y - 1][x].m_a ? m_pixelAttributes[y - 1][x].m_h : h;
 			double d = (h - h1) + (h - h2);
 			if (d > 3) {
 				d = 3;
@@ -132,10 +132,10 @@ void PixelAttributes::renderShading(bool drawAlpha)
 			#define pixel (m_pixelAttributes[y][x])
 			//PixelAttribute &pixel = m_pixelAttributes[y][x];
 			if (drawAlpha)
-				d = d * (1 - pixel.t);
-			pixel.r = colorSafeBounds(pixel.r + d);
-			pixel.g = colorSafeBounds(pixel.g + d);
-			pixel.b = colorSafeBounds(pixel.b + d);
+				d = d * (1 - pixel.m_t);
+			pixel.m_r = colorSafeBounds(pixel.m_r + d);
+			pixel.m_g = colorSafeBounds(pixel.m_g + d);
+			pixel.m_b = colorSafeBounds(pixel.m_b + d);
 			#undef pixel
 		}
 	}
@@ -144,33 +144,35 @@ void PixelAttributes::renderShading(bool drawAlpha)
 
 void PixelAttribute::mixUnder(const PixelAttribute &p, bool darkenHighAlpha)
 {
-	if (!is_valid() || a == 0) {
-		if (!is_valid() || p.a != 0) {
-			r = p.r;
-			g = p.g;
-			b = p.b;
-			a = p.a;
-			t = 0;
+	if (!is_valid() || m_a == 0) {
+		if (!is_valid() || p.m_a != 0) {
+			m_n = p.m_n;
+			m_r = p.m_r;
+			m_g = p.m_g;
+			m_b = p.m_b;
+			m_a = p.m_a;
+			m_t = 0;
 		}
-		h = p.h;
+		m_h = p.m_h;
 	}
 	else {
 		int prev_alpha = alpha();
-		r = (a * r + p.a * (1 - a) * p.r);
-		g = (a * g + p.a * (1 - a) * p.g);
-		b = (a * b + p.a * (1 - a) * p.b);
-		a = (a + (1 - a) * p.a);
-		if (p.a != 1)
-			t = (t + p.t) / 2;
-		h = p.h;
+		m_r = (m_a * m_r + p.m_a * (1 - m_a) * p.m_r);
+		m_g = (m_a * m_g + p.m_a * (1 - m_a) * p.m_g);
+		m_b = (m_a * m_b + p.m_a * (1 - m_a) * p.m_b);
+		m_a = (m_a + (1 - m_a) * p.m_a);
+		if (p.m_a != 1)
+			m_t = (m_t + p.m_t) / 2;
+		m_h = p.m_h;
 		if (prev_alpha >= 254 && p.alpha() < 255 && darkenHighAlpha) {
 			// Darken
 			// Parameters make deep water look good :-)
-			r = r * 0.95;
-			g = g * 0.95;
-			b = b * 0.95;
-			if (p.a != 1)
-				t = (t + p.t) / 2;
+			// (maybe this setting should be per-node-type, and obtained from the colors file ?)
+			m_r = m_r * 0.95;
+			m_g = m_g * 0.95;
+			m_b = m_b * 0.95;
+			if (p.m_a != 1)
+				m_t = (m_t + p.m_t) / 2;
 		}
 	}
 

@@ -18,28 +18,39 @@
 #include "config.h"
 #include "Color.h"
 
-struct PixelAttribute {
-	PixelAttribute(): next16Empty(true), h(NAN), t(0), a(0), r(0), g(0), b(0) {};
+class PixelAttribute {
+public:
+	PixelAttribute(): next16Empty(true), m_n(0), m_h(NAN), m_t(0), m_a(0), m_r(0), m_g(0), m_b(0) {};
 	PixelAttribute(const Color &color, double height);
 	PixelAttribute(const ColorEntry &entry, double height);
 	bool next16Empty;
-	double h;
-	double t;
-	double a;
-	double r;
-	double g;
-	double b;
-	uint8_t red(void) const { return int(r*255+0.5); }
-	uint8_t green(void) const { return int(g*255+0.5); }
-	uint8_t blue(void) const { return int(b*255+0.5); }
-	uint8_t alpha(void) const { return int(a*255+0.5); }
-	uint8_t thicken(void) const { return int(t*255+0.5); }
-	unsigned height(void) const { return unsigned(h+0.5); }
+	double h(void) const { return m_h / (m_n ? m_n : 1); }
+	double t(void) const { return m_t / (m_n ? m_n : 1); }
+	double a(void) const { return m_a / (m_n ? m_n : 1); }
+	double r(void) const { return m_r / (m_n ? m_a : 1); }
+	double g(void) const { return m_g / (m_n ? m_a : 1); }
+	double b(void) const { return m_b / (m_n ? m_a : 1); }
+	uint8_t red(void) const { return int(r() * 255 + 0.5); }
+	uint8_t green(void) const { return int(g() * 255 + 0.5); }
+	uint8_t blue(void) const { return int(b() * 255 + 0.5); }
+	uint8_t alpha(void) const { return int(a() * 255 + 0.5); }
+	uint8_t thicken(void) const { return int(t() * 255 + 0.5); }
+	unsigned height(void) const { return unsigned(h() + 0.5); }
 	Color color(void) const { return Color(red(), green(), blue(), alpha()); }
 
-	inline bool is_valid() const { return !isnan(h); }
+	inline bool is_valid() const { return !isnan(m_h); }
 	PixelAttribute &operator=(const PixelAttribute &p);
 	void mixUnder(const PixelAttribute &p, bool darkenHighAlpha);
+private:
+	double m_n;
+	double m_h;
+	double m_t;
+	double m_a;
+	double m_r;
+	double m_g;
+	double m_b;
+
+friend class PixelAttributes;
 };
 
 class PixelAttributes
@@ -96,25 +107,26 @@ inline PixelAttribute &PixelAttributes::attribute(int y, int x)
 }
 
 inline PixelAttribute::PixelAttribute(const Color &color, double height) :
-	next16Empty(false), h(height), t(0), a(color.a/255.0),
-	r(color.r/255.0), g(color.g/255.0), b(color.b/255.0)
+	next16Empty(false), m_n(0), m_h(height), m_t(0), m_a(color.a/255.0),
+	m_r(color.r/255.0), m_g(color.g/255.0), m_b(color.b/255.0)
 {
 }
 
 inline PixelAttribute::PixelAttribute(const ColorEntry &entry, double height) :
-	next16Empty(false), h(height), t(entry.t/255.0), a(entry.a/255.0),
-	r(entry.r/255.0), g(entry.g/255.0), b(entry.b/255.0)
+	next16Empty(false), m_n(0), m_h(height), m_t(entry.t/255.0), m_a(entry.a/255.0),
+	m_r(entry.r/255.0), m_g(entry.g/255.0), m_b(entry.b/255.0)
 {
 }
 
 inline PixelAttribute &PixelAttribute::operator=(const PixelAttribute &p)
 {
-	h = p.h;
-	t = p.t;
-	a = p.a;
-	r = p.r;
-	g = p.g;
-	b = p.b;
+	m_n = p.m_n;
+	m_h = p.m_h;
+	m_t = p.m_t;
+	m_a = p.m_a;
+	m_r = p.m_r;
+	m_g = p.m_g;
+	m_b = p.m_b;
 	return *this;
 }
 
