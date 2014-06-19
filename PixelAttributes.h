@@ -20,7 +20,15 @@
 
 class PixelAttribute {
 public:
+	enum AlphaMixingMode {
+		AlphaMixDarkenBit = 0x01,
+		AlphaMixCumulative = 0x02,
+		AlphaMixCumulativeDarken = 0x03,
+		AlphaMixAverage = 0x04,
+	};
+	static void setMixMode(AlphaMixingMode mode);
 	PixelAttribute(): next16Empty(true), m_n(0), m_h(NAN), m_t(0), m_a(0), m_r(0), m_g(0), m_b(0) {};
+//	PixelAttribute(const PixelAttribute &p);
 	PixelAttribute(const Color &color, double height);
 	PixelAttribute(const ColorEntry &entry, double height);
 	bool next16Empty;
@@ -36,12 +44,16 @@ public:
 	uint8_t alpha(void) const { return int(a() * 255 + 0.5); }
 	uint8_t thicken(void) const { return int(t() * 255 + 0.5); }
 	unsigned height(void) const { return unsigned(h() + 0.5); }
+	bool isNormalized(void) const { return !m_n; }
 	Color color(void) const { return Color(red(), green(), blue(), alpha()); }
 
 	inline bool is_valid() const { return !isnan(m_h); }
 	PixelAttribute &operator=(const PixelAttribute &p);
-	void mixUnder(const PixelAttribute &p, bool darkenHighAlpha);
+	void normalize(double count = 0, Color defaultColor = Color(127, 127, 127));
+	void add(const PixelAttribute &p);
+	void mixUnder(const PixelAttribute &p);
 private:
+	static AlphaMixingMode m_mixMode;
 	double m_n;
 	double m_h;
 	double m_t;
@@ -94,6 +106,13 @@ inline void PixelAttributes::setLastY(int y)
 	m_lastY = y;
 }
 
+inline void PixelAttribute::setMixMode(AlphaMixingMode mode)
+{
+	if (mode == AlphaMixDarkenBit)
+		mode = AlphaMixCumulativeDarken;
+	m_mixMode = mode;
+}
+
 inline PixelAttribute &PixelAttributes::attribute(int y, int x)
 {
 #ifdef DEBUG
@@ -105,6 +124,11 @@ inline PixelAttribute &PixelAttributes::attribute(int y, int x)
 #endif
 	return m_pixelAttributes[yCoord2Line(y)][x + 1];
 }
+
+//inline PixelAttribute::PixelAttribute(const PixelAttribute &p) :
+//{
+//	operator=(p);
+//}
 
 inline PixelAttribute::PixelAttribute(const Color &color, double height) :
 	next16Empty(false), m_n(0), m_h(height), m_t(0), m_a(color.a/255.0),

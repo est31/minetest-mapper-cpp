@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include "TileGenerator.h"
+#include "PixelAttributes.h"
 
 using namespace std;
 
@@ -71,7 +72,7 @@ void usage()
 			"  --drawscale\n"
 			"  --drawplayers\n"
 			"  --draworigin\n"
-			"  --drawalpha[=[no]darken]\n"
+			"  --drawalpha[=cumulative|cumulative-darken|average|none]\n"
 			"  --drawair\n"
 			"  --draw[map]point \"<x>,<y> color\"\n"
 			"  --draw[map]line \"<geometry> color\"\n"
@@ -648,12 +649,19 @@ int main(int argc, char *argv[])
 					}
 					break;
 				case 'e':
-					if (optarg && string(optarg) == "darken")
-						generator.setDrawAlpha(true, true);
-					else if (optarg && string(optarg) == "nodarken")
-						generator.setDrawAlpha(true, false);
-					else if (!optarg)
-						generator.setDrawAlpha(true);
+					generator.setDrawAlpha(true);
+					if (!optarg || !*optarg)
+						PixelAttribute::setMixMode(PixelAttribute::AlphaMixAverage);
+					else if (string(optarg) == "cumulative" || string(optarg) == "nodarken")
+						// "nodarken" is supported for backwards compatibility
+						PixelAttribute::setMixMode(PixelAttribute::AlphaMixCumulative);
+					else if (string(optarg) == "darken" || string(optarg) == "cumulative-darken")
+						// "darken" is supported for backwards compatibility
+						PixelAttribute::setMixMode(PixelAttribute::AlphaMixCumulativeDarken);
+					else if (string(optarg) == "average")
+						PixelAttribute::setMixMode(PixelAttribute::AlphaMixAverage);
+					else if (string(optarg) == "none")
+						generator.setDrawAlpha(false);
 					else {
 						std::cerr << "Invalid parameter to '" << long_options[option_index].name << "': '" << optarg << "'" << std::endl;
 						usage();

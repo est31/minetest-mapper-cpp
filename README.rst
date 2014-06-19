@@ -176,22 +176,42 @@ drawplayers:
 draworigin:
     Draw origin indicator, `--draworigin`
 
-drawalpha[=darken|nodarken]:
-    Allow blocks to be drawn with transparency, `--drawalpha=darken`
+drawalpha[=cumulative|cumulative-darken|average|none]:
+    Allow blocks to be drawn with transparency, `--drawalpha=average`
 
-    Even with drawalpha, transparency decreases with depth. After a certain
-    number of transparent blocks (e.g. water depth), the color will become opaque,
-    and the underlying colors will no longer shine through. The height differences
-    *will* still be visible though.
+    In cumulative mode, transparency decreases with depth, and darkness of
+    the color increases. After a certain number of transparent blocks
+    (e.g. water depth), the color will become opaque, and the underlying
+    colors will no longer shine through. The height differences *will*
+    still be visible though.
 
-    With 'darken', after the color becomes opaque, it will gradually be darkened
-    to visually simulate the bigger thickness of transparent blocks. The downside
-    is that eventually, the color becomes black.
+    In cumulative-darken mode, after the color becomes opaque, it will gradually
+    be darkened to visually simulate the bigger thickness of transparent blocks.
+    The downside is that eventually, the color becomes black.
 
-    Darken mode makes deeper, but not too deep water look much better. Very deep water
-    will become black though.
+    Cumulative-darken mode makes deeper, but not too deep water look much better.
+    Very deep water will become black though.
 
-    With nodarken (default), after it becomes opaque, the color will not be darkened.
+    In average mode, all transparent colors are averaged. The blocks remain transparent
+    infinitely. If no parameter is given to --drawalpha, 'average' is the default.
+
+    'None' disables alpha drawing. This is the same as not using --drawalpha at all.
+
+    For backward compatibility, 'nodarken' is still recognised as alias for 'cumulative';
+    'darken' is still recognised as alias for 'cumulative-darken'. Please don't use
+    them, they may disappear in the future.
+
+    Note that each of the different modes has a different color definition
+    for transparent blocks that looks best. For instance, for water, the following
+    are suggested:
+
+    (disabled): 39 66 106 [192 224 - optional: alpha configuration will be ignored]
+
+    cumulative: 78 132 255 64 224
+
+    cumulative-darken: 78 132 255 64 224
+
+    average: 49 82 132 192 224 (look also good with alpha disabled)
 
 drawair:
     Draw air blocks. `--drawair`
