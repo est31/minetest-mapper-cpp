@@ -296,6 +296,8 @@ if(WIN32)
 
 	install(FILES ${META_FILES} DESTINATION ".")
 	install(FILES "colors.txt" DESTINATION ".")
+	install(FILES "colors-average-alpha.txt" DESTINATION ".")
+	install(FILES "colors-cumulative-alpha.txt" DESTINATION ".")
 	install(PROGRAMS "${PROJECT_BINARY_DIR}/minetestmapper.exe" DESTINATION ".")
 
 elseif(CREATE_FLAT_PACKAGE)
@@ -316,6 +318,8 @@ elseif(CREATE_FLAT_PACKAGE)
 
 	install(FILES ${META_FILES} DESTINATION ".")
 	install(FILES "colors.txt" DESTINATION ".")
+	install(FILES "colors-average-alpha.txt" DESTINATION ".")
+	install(FILES "colors-cumulative-alpha.txt" DESTINATION ".")
 	install(PROGRAMS "${PROJECT_BINARY_DIR}/minetestmapper" DESTINATION ".")
 
 else(WIN32)
@@ -348,6 +352,8 @@ else(WIN32)
 
 	install(FILES ${META_FILES} DESTINATION "share/doc/${PROJECT_NAME}" COMPONENT mapper)
 	install(FILES colors.txt DESTINATION "share/games/${PROJECT_NAME}" COMPONENT mapper)
+	install(FILES colors-average-alpha.txt DESTINATION "share/games/${PROJECT_NAME}" COMPONENT mapper)
+	install(FILES colors-cumulative-alpha.txt DESTINATION "share/games/${PROJECT_NAME}" COMPONENT mapper)
 	install(TARGETS minetestmapper RUNTIME DESTINATION bin COMPONENT mapper)
 
 	if(CMAKE_INSTALL_PREFIX STREQUAL "/usr")

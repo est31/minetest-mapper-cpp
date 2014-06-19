@@ -213,6 +213,9 @@ drawalpha[=cumulative|cumulative-darken|average|none]:
 
     average: 49 82 132 192 224 (look also good with alpha disabled)
 
+    Custom colors files are provided for these alternatives: colors-average-alpha.txt
+    and colors-cumulative-alpha.txt
+
 drawair:
     Draw air blocks. `--drawair`
 
