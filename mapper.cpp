@@ -34,6 +34,7 @@ using namespace std;
 // Will be replaced with the actual name and location of the executable (if found)
 string executableName = "minetestmapper";
 string installPrefix = INSTALL_PREFIX;
+string colorsDefaultName = "colors.txt";
 
 class FuzzyBool {
 private:
@@ -125,73 +126,64 @@ void usage()
 void parseColorsFile(TileGenerator &generator, const string &input, string colorsFile) {
 	if (!colorsFile.empty()) {
 		generator.parseColorsFile(colorsFile);
+		return;
 	}
-	else {
-		bool colorsFound = false;
-		char *homedir;
-		colorsFile = input + PATH_SEPARATOR +  "colors.txt";
 
-		try {
-			generator.parseColorsFile(colorsFile);
-			colorsFound = true;
-		} catch (std::runtime_error e) {
-			// Ignore failure to locate world-specific colors file
-		}
+	std::vector<std::string> colorPaths;
+	colorPaths.push_back(input);
 
-		if (!colorsFound) {
-			// Check if '../..' looks like a valid minetest directory
-			string file = input + PATH_SEPARATOR + ".." + PATH_SEPARATOR + ".." + PATH_SEPARATOR + "minetest.conf";
-			int fd;
-			if (0 <= (fd = open(file.c_str(), O_RDONLY))) {
-				close(fd);
-				colorsFile = input + PATH_SEPARATOR + ".." + PATH_SEPARATOR + ".." + PATH_SEPARATOR + "colors.txt";
-				try {
-					generator.parseColorsFile(colorsFile);
-					colorsFound = true;
-				} catch (std::runtime_error e) {
-					// Ignore failure to locate world-specific colors file
+	// Check if input/../.. looks like a valid minetest directory
+	string minetestPath = input + PATH_SEPARATOR + ".." + PATH_SEPARATOR + "..";
+	string minetestConf = minetestPath + PATH_SEPARATOR + "minetest.conf";
+	int fd;
+	if (0 <= (fd = open(minetestConf.c_str(), O_RDONLY))) {
+		close(fd);
+		colorPaths.push_back(minetestPath);
+	}
+	char *homedir;
+	if ((homedir = getenv("HOME"))) {
+		colorPaths.push_back(string(homedir) + PATH_SEPARATOR + ".minetest");
+	}
+
+	if (!installPrefix.empty()) {
+#if PACKAGING_FLAT
+		colorPaths.push_back(installPrefix);
+#else
+		colorPaths.push_back(installPrefix + "/share/games/minetestmapper");
+#endif
+	}
+	colorPaths.push_back("");
+
+	std::vector<std::string> colorFileNames;
+	colorFileNames.push_back(colorsDefaultName);
+
+	for (std::vector<std::string>::iterator path = colorPaths.begin(); path != colorPaths.end(); path++) {
+		for (std::vector<std::string>::iterator name = colorFileNames.begin(); name != colorFileNames.end(); name++) {
+			if (path->empty())
+				colorsFile = *name;
+			else
+				colorsFile = *path + PATH_SEPARATOR +  *name;
+			try {
+				generator.parseColorsFile(colorsFile);
+				if (path->empty()) {
+					// I hope this is not obnoxious to windows users ?
+					cerr	<< "Warning: Using " << *name << " in current directory as a last resort." << std::endl
+						<< "         Preferably, store the colors file in the world directory" << std::endl;
+					if (homedir)
+						cerr	<< "         or in the private minetest directory ($HOME/.minetest)." << std::endl;
+					cerr	<< "         It can also be specified on the command-line" << std::endl;
+				}
+				return;
+			} catch (std::runtime_error e) {
+				// Ignore failure to locate colors file in standard location
+				// (we have more places to search)
+				if (path->empty()) {
 				}
 			}
-		}
 
-		if (!colorsFound && (homedir = getenv("HOME"))) {
-			colorsFile = string(homedir) + PATH_SEPARATOR + ".minetest" + PATH_SEPARATOR + "colors.txt";
-			try {
-				generator.parseColorsFile(colorsFile);
-				colorsFound = true;
-			} catch (std::runtime_error e) {
-				// Ignore failure to locate user private colors file
-			}
-		}
-
-		if (!colorsFound && !installPrefix.empty()) {
-#if PACKAGING_FLAT
-			colorsFile = installPrefix + PATH_SEPARATOR + "colors.txt";
-#else
-			colorsFile = installPrefix + "/share/games/minetestmapper/" + "colors.txt";
-#endif
-			try {
-				generator.parseColorsFile(colorsFile);
-				colorsFound = true;
-			} catch (std::runtime_error e) {
-				// Ignore failure to locate system colors file
-			}
-		}
-
-		if (!colorsFound) {
-			try {
-				generator.parseColorsFile("colors.txt");
-				// I hope this is not obnoxious to windows users ?
-				cerr	<< "Warning: Using colors.txt in current directory as a last resort." << std::endl
-					<< "         Preferably, store the colors file in the world directory" << std::endl;
-				if (homedir)
-					cerr	<< "         or in the private minetest directory ($HOME/.minetest)." << std::endl;
-				cerr	<< "         It can also be specified on the command-line" << std::endl;
-			} catch(std::runtime_error e) {
-				throw std::runtime_error("Failed to find or failed to open a colors.txt file.");
-			}
 		}
 	}
+	throw std::runtime_error("Failed to find or failed to open a colors.txt file.");
 }
 
 // is: stream to read from
