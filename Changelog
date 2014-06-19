@@ -1,3 +1,31 @@
+[20 jun 2014]
+    Features:
+	- Added the ability to select a method of transparency computation for
+		drawalpha. Three methods are supported when transparency is enabled:
+		- cumulative: The original mode. Colors become slightly darker and
+		  more opaque as the number of stacked transparent blocks increases
+		- cumulative-darken: Same as cumulative, except that when the color
+		  has become opaque, the color is progressively darkened to visually
+		  simulate greater depth. Eventually, this will cause the color to
+		  become black.
+		  This used to be the default and only method since commit 8faa2d
+		  (on 10 april 2014)
+		- average: Transparent blocks always remain transparent, regardless
+		  of their stacking height. This means that the bottom of deep oceans,
+		  and any artefacts that exist there remains visible. When different
+		  types of transparent blocks sit on top of each other, their average
+		  color and transparency is used.
+		  This method is now the default.
+
+    Enhancements:
+	- The default lava color has been changed to slightly transparent.
+	- The default water color has been made slightly lighter.
+	- Alternative color definitions are provided for different methods of
+		transparency computation
+
+    Bugfixes:
+	- Minetestmapper should now build correctly on clang/freebsd
+
 [18 jun 2014]
     Features:
 	- The package generation code for Linux was extensively reworked and
