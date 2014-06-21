@@ -261,7 +261,8 @@ void PixelAttribute::mixUnder(const PixelAttribute &p)
 		m_a = (m_a + (1 - m_a) * pp.m_a);
 		if (pp.m_a != 1)
 			m_t = (m_t + pp.m_t) / 2;
-		m_h = pp.m_h;
+		else
+			m_h = pp.m_h;
 		if ((m_mixMode & AlphaMixDarkenBit) && prev_alpha >= 254 && pp.alpha() < 255) {
 			// Darken
 			// Parameters make deep water look good :-)
@@ -285,8 +286,8 @@ void PixelAttribute::mixUnder(const PixelAttribute &p)
 			normalize();
 			m_t = t;
 			m_a = 1;
+			m_h = m_n * h;
 		}
-		m_h = m_n * h;
 	}
 #ifdef DEBUG
 	else {
