@@ -397,7 +397,11 @@ void TileGenerator::generate(const std::string &input, const std::string &output
 	if (!m_drawObjects.empty()) {
 		renderDrawObjects();
 	}
+	if (progressIndicator)
+	    cout << "Writing image...\r" << std::flush;
 	writeImage(output);
+	if (progressIndicator)
+	    cout << std::setw(20) << " " <<  "\r" << std::flush;
 	printUnknown();
 }
 
@@ -674,6 +678,8 @@ void TileGenerator::loadBlocks()
 		m_mapYStartNodeOffset = 0;
 		m_mapYEndNodeOffset = 0;
 	}
+	if (progressIndicator)
+	    cout << "Scanning world...\r" << std::flush;
 	mapXMin = INT_MAX/16-1;
 	mapXMax = -INT_MIN/16+1;
 	mapYMin = INT_MAX/16-1;
@@ -1201,7 +1207,9 @@ void TileGenerator::renderMap()
 				pushPixelRows(pos.z);
 				m_blockPixelAttributes.setLastY((m_zMax - pos.z) * 16 + 15);
 				if (progressIndicator)
-				    cout << "Processing Z-coordinate: " << std::setw(5) << pos.z*16 << "\r" << std::flush;
+				    cout << "Processing Z-coordinate: " << std::setw(6) << pos.z*16
+					<< "  (" << std::fixed << std::setprecision(0) << 100.0 * (m_zMax - pos.z) / (m_zMax - m_zMin)
+					<< "%)          \r" << std::flush;
 			}
 			for (int i = 0; i < 16; ++i) {
 				m_readedPixels[i] = 0;
@@ -1265,7 +1273,7 @@ void TileGenerator::renderMap()
 		 cout << std::endl;
 	}
 	else if (progressIndicator)
-		cout << std::setw(40) << "" << "\r";
+		cout << std::setw(50) << "" << "\r";
 }
 
 inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPos &pos, int version)
