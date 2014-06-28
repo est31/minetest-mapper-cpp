@@ -117,13 +117,13 @@ void PixelAttributes::renderShading(bool drawAlpha)
 			}
 			if (!m_pixelAttributes[y][x].isNormalized())
 				m_pixelAttributes[y][x].normalize();
-			if (!m_pixelAttributes[y][x].is_valid() || !m_pixelAttributes[y - 1][x].is_valid()) {
+			if (!m_pixelAttributes[y][x].is_valid()) {
 				if (x + 1 < m_width && !m_pixelAttributes[y][x + 1].isNormalized())
 					m_pixelAttributes[y][x + 1].normalize();
 				x++;
 				continue;
 			}
-			if (!m_pixelAttributes[y][x - 1].is_valid())
+			if (!m_pixelAttributes[y - 1][x].is_valid() || !m_pixelAttributes[y][x - 1].is_valid())
 				continue;
 			if (!m_pixelAttributes[y][x].m_a)
 				continue;
