@@ -1358,6 +1358,7 @@ snow:dirt_with_snow 225 227 255
 snow:snow4 225 227 255
 snow:snow2 225 227 255
 snow:ice 155 155 254
+snow:ice 155 155 254 240 224
 stairs:stair_wood_tile_full 78 64 44
 stairs:stair_mossycobble 102 116 85
 stairs:slab_jungle_wood 51 35 12
@@ -1481,6 +1482,7 @@ default:stone_with_copper 91 88 87
 default:grass_1 72 109 32
 default:papyrus 98 173 32
 default:ice 155 155 254
+default:ice 155 155 254 240 224
 default:wood 128 100 57
 default:stone_with_mese 91 88 87
 default:diamondblock 103 195 201
