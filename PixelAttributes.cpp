@@ -269,8 +269,6 @@ void PixelAttribute::mixUnder(const PixelAttribute &p)
 			m_r = m_r * 0.95;
 			m_g = m_g * 0.95;
 			m_b = m_b * 0.95;
-			if (pp.m_a != 1)
-				m_t = (m_t + pp.m_t) / 2;
 		}
 	}
 #ifdef DEBUG
