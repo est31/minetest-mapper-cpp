@@ -1508,7 +1508,7 @@ default:tree 66 52 35
 default:jungletree 120 106 78
 default:cactus 132 143 108
 default:water_source 49 82 132
-default:water_source 49 82 132 192 200
+default:water_source 49 82 132 192 224
 default:mese 200 202 0
 default:stone_with_coal 91 88 87
 default:nyancat 38 16 66
