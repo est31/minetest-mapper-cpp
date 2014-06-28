@@ -3,6 +3,7 @@ minetestmapper.exe
 CMakeCache.txt
 CMakeFiles/
 CPack*
+_CPack_Packages/
 Makefile
 cmake_install.cmake
 cmake_config.h
