@@ -12,6 +12,8 @@
 #include <climits>
 #include <fstream>
 #include <gdfontmb.h>
+#include <gdfonts.h>
+#include <gdfontt.h>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -1263,22 +1265,28 @@ void TileGenerator::renderScale()
 	string scaleText;
 
 	for (int i = (m_xMin / 4) * 4; i <= m_xMax; i += 4) {
-		stringstream buf;
-		buf << i * 16;
-		scaleText = buf.str();
-
+		stringstream buf1, buf2;
+		buf1 << i * 16;
+		buf2 << "(" << i << ")";
 		int xPos = worldX2ImageX(i * 16);
+
+		scaleText = buf1.str();
 		gdImageString(m_image, gdFontGetMediumBold(), xPos + 2, 0, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
+		scaleText = buf2.str();
+		gdImageString(m_image, gdFontGetTiny(), xPos + 2, 16, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
 		gdImageLine(m_image, xPos, 0, xPos, m_border - 1, color);
 	}
 
 	for (int i = (m_zMax / 4) * 4; i >= m_zMin; i -= 4) {
-		stringstream buf;
-		buf << i * 16;
-		scaleText = buf.str();
-
+		stringstream buf1, buf2;
+		buf1 << i * 16;
+		buf2 << "(" << i << ")";
 		int yPos = worldZ2ImageY(i * 16);
+
+		scaleText = buf1.str();
 		gdImageString(m_image, gdFontGetMediumBold(), 2, yPos, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
+		scaleText = buf2.str();
+		gdImageString(m_image, gdFontGetTiny(), 2, yPos-10, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
 		gdImageLine(m_image, 0, yPos, m_border - 1, yPos, color);
 	}
 }
