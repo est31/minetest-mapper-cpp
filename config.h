@@ -13,9 +13,10 @@
 #define PATH_SEPARATOR '/'
 #endif
 
-#define BLOCK_SIZE	16
-#define MAPBLOCK_MIN	(-2048)
-#define MAPBLOCK_MAX	2047
+#define BLOCK_SIZE		16
+#define MAPBLOCK_MIN		(-2048)
+#define MAPBLOCK_MAX		2047
+#define CHUNK_SIZE_DEFAULT	5
 
 // Max number of node name -> color mappings stored in a mapblock
 #define MAPBLOCK_MAXCOLORS	65536

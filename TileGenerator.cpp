@@ -143,6 +143,7 @@ TileGenerator::TileGenerator():
 	m_shrinkGeometry(true),
 	m_blockGeometry(false),
 	m_sqliteCacheWorldRow(false),
+	m_chunkSize(0),
 	m_image(0),
 	m_xMin(INT_MAX/16-1),
 	m_xMax(INT_MIN/16+1),
@@ -367,6 +368,11 @@ void TileGenerator::setBackend(std::string backend)
 	m_backend = backend;
 }
 
+void TileGenerator::setChunkSize(int size)
+{
+	m_chunkSize = size;
+}
+
 void TileGenerator::generate(const std::string &input, const std::string &output)
 {
 	string input_path = input;
@@ -376,7 +382,7 @@ void TileGenerator::generate(const std::string &input, const std::string &output
 
 	openDb(input_path);
 	loadBlocks();
-	computeMapParameters();
+	computeMapParameters(input);
 	createImage();
 	renderMap();
 	if (m_drawScale) {
@@ -522,6 +528,49 @@ std::string TileGenerator::getWorldDatabaseBackend(const std::string &input)
 	if (backend == "")
 		backend = "sqlite3";
 	return backend;
+}
+
+int TileGenerator::getMapChunkSize(const std::string &input)
+{
+	int chunkSize = -1;
+
+	std::string worldFile = input + PATH_SEPARATOR + "map_meta.txt";
+	ifstream in;
+	in.open(worldFile.c_str(), ifstream::in);
+	if (!in.is_open()) {
+		cerr << "Could not obtain world chunk size: failed to open map_meta.txt - using default size ("
+			<< CHUNK_SIZE_DEFAULT << ")" << std::endl;
+		return CHUNK_SIZE_DEFAULT;
+	}
+
+	std::string line;
+	int linenr = 0;
+	for (std::getline(in,line); in.good(); std::getline(in,line)) {
+		linenr++;
+		istringstream iline;
+		iline.str(line);
+		iline >> std::skipws;
+		string variable;
+		char eq;
+		iline >> variable;
+		if (variable != "chunksize")
+			continue;
+		iline >> std::ws >> eq;
+		iline >> chunkSize;
+		if (in.fail() || eq != '=') {
+			cerr << "Could not obtain world chunk size: error parsing configuration line - using default size ("
+				<< CHUNK_SIZE_DEFAULT << ")" << std::endl;
+			return CHUNK_SIZE_DEFAULT;
+		}
+		if (chunkSize <= 0) {
+			cerr << "Invalid chunk size found in map_meta.txt (" << chunkSize << ") - using default size ("
+				<< CHUNK_SIZE_DEFAULT << ")" << std::endl;
+			return CHUNK_SIZE_DEFAULT;
+		}
+	}
+	in.close();
+	if (chunkSize < 0) return CHUNK_SIZE_DEFAULT;
+	else return chunkSize;
 }
 
 void TileGenerator::openDb(const std::string &input)
@@ -876,8 +925,15 @@ void TileGenerator::computeTileParameters(
 	tileBorderCount = tileBorderLimit - tileBorderStart;
 }
 
-void TileGenerator::computeMapParameters()
+void TileGenerator::computeMapParameters(const std::string &input)
 {
+	if (!m_chunkSize && (m_tileWidth == TILESIZE_CHUNK || m_tileHeight == TILESIZE_CHUNK))
+		m_chunkSize = getMapChunkSize(input);
+	if (m_tileWidth == TILESIZE_CHUNK)
+		m_tileWidth = m_chunkSize * BLOCK_SIZE;
+	if (m_tileHeight == TILESIZE_CHUNK)
+		m_tileHeight = m_chunkSize * BLOCK_SIZE;
+
 	m_storedWidth = (m_xMax - m_xMin + 1) * 16;
 	m_storedHeight = (m_zMax - m_zMin + 1) * 16;
 	int mapWidth = m_storedWidth - m_mapXStartNodeOffset + m_mapXEndNodeOffset;
@@ -892,6 +948,9 @@ void TileGenerator::computeMapParameters()
 			break;
 		case TILECORNER_AT_WORLDCENTER:
 			m_tileXOrigin = 0;
+			break;
+		case TILECENTER_AT_CHUNKCENTER:
+			m_tileXOrigin = ((m_chunkSize%2) ? BLOCK_SIZE / 2 : 0) - m_tileWidth / 2;
 			break;
 		case TILECENTER_AT_MAPCENTER:
 			m_tileXOrigin = m_xMin * 16 + m_mapXStartNodeOffset + mapWidth / 2 - m_tileWidth / 2;
@@ -912,6 +971,9 @@ void TileGenerator::computeMapParameters()
 			break;
 		case TILECORNER_AT_WORLDCENTER:
 			m_tileZOrigin = 0;
+			break;
+		case TILECENTER_AT_CHUNKCENTER:
+			m_tileZOrigin = ((m_chunkSize%2) ? BLOCK_SIZE / 2 : 0) - m_tileHeight / 2;
 			break;
 		case TILECENTER_AT_MAPCENTER:
 			m_tileZOrigin = (m_zMax + 1) * 16 - 1 - m_mapYStartNodeOffset - mapHeight / 2 - m_tileHeight / 2;

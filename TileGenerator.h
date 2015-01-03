@@ -29,8 +29,10 @@
 #include "Color.h"
 #include "db.h"
 
+#define TILESIZE_CHUNK			(INT_MIN)
 #define TILECENTER_AT_WORLDCENTER	(INT_MAX)
 #define TILECORNER_AT_WORLDCENTER	(INT_MAX - 1)
+#define TILECENTER_AT_CHUNKCENTER	(INT_MAX - 2)
 #define TILECENTER_AT_MAPCENTER		(INT_MIN)
 #define TILECORNER_AT_MAPCENTER		(INT_MIN + 1)
 
@@ -109,15 +111,17 @@ public:
 	void enableProgressIndicator(void);
 	void parseColorsFile(const std::string &fileName, int depth = 0);
 	void setBackend(std::string backend);
+	void setChunkSize(int size);
 	void generate(const std::string &input, const std::string &output);
 
 private:
 	void parseColorsStream(std::istream &in, const std::string &filename, int depth);
 	std::string getWorldDatabaseBackend(const std::string &input);
+	int getMapChunkSize(const std::string &input);
 	void openDb(const std::string &input);
 	void loadBlocks();
 	void createImage();
-	void computeMapParameters();
+	void computeMapParameters(const std::string &input);
 	void computeTileParameters(
                 // Input parameters
                 int minPos,
@@ -176,6 +180,7 @@ private:
 	bool m_shrinkGeometry;
 	bool m_blockGeometry;
 	bool m_sqliteCacheWorldRow;
+	int m_chunkSize;
 
 	DB *m_db;
 	gdImagePtr m_image;

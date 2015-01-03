@@ -348,12 +348,19 @@ sqlite-cacheworldrow:
 
     This may improve performance when a large percentage of the world is mapped.
 
-tiles <tilesize>[+<border>]
+chunksize:
+    Manually specify the chunk size (for use with --tiles chunk)
+
+tiles <tilesize>[+<border>]|block|chunk
     Divide the map in square tiles of the requested size. A border of the
     requested width (or width 1, of not specfied) is drawn between the tiles.
     In order to preserve all map pixels (and to prevent overwriting them with
     borders), extra pixel rows and columns for the borders are inserted into
     the map.
+
+    The special values 'block' and 'chunk' draw tiles that correspond to map
+    blocks (16x16 nodes) or to chunks (the unit of map generation; 5x5 blocks
+    for a world with default settings).
 
     In order to allow partial world maps to be combined into larger maps, edge
     borders of the map are always drawn on the same side (left or top). Other
@@ -364,6 +371,8 @@ tiles <tilesize>[+<border>]
     `--tiles 1000`
 
     `--tiles 1000+2`
+
+    `--tiles block`
 
     NOTE: As a consequence of preserving all map pixels:
 

@@ -29,6 +29,7 @@ using namespace std;
 #define OPT_BLOCKCOLOR			0x84
 #define OPT_DRAWAIR			0x85
 #define OPT_VERBOSE_SEARCH_COLORS	0x86
+#define OPT_CHUNKSIZE			0x87
 
 // Will be replaced with the actual name and location of the executable (if found)
 string executableName = "minetestmapper";
@@ -96,9 +97,10 @@ void usage()
 #if USE_SQLITE3
 			"  --sqlite-cacheworldrow\n"
 #endif
-			"  --tiles <tilesize>[+<border>]\n"
+			"  --tiles <tilesize>[+<border>]|block|chunk\n"
 			"  --tileorigin <x>,<y>|world|map\n"
 			"  --tilecenter <x>,<y>|world|map\n"
+			"  --chunksize <size>\n"
 			"  --verbose[=n]\n"
 			"  --verbose-search-colors[=n]\n"
 			"  --progress\n"
@@ -556,6 +558,7 @@ int main(int argc, char *argv[])
 		{"tileorigin", required_argument, 0, 'T'},
 		{"tilecenter", required_argument, 0, 'T'},
 		{"tilebordercolor", required_argument, 0, 'B'},
+		{"chunksize", required_argument, 0, OPT_CHUNKSIZE},
 		{"verbose", optional_argument, 0, 'v'},
 		{"verbose-search-colors", optional_argument, 0, OPT_VERBOSE_SEARCH_COLORS},
 		{"progress", no_argument, 0, OPT_PROGRESS_INDICATOR},
@@ -696,26 +699,49 @@ int main(int argc, char *argv[])
 						generator.setMaxY(maxy);
 					}
 					break;
-				case 't': {
-						istringstream tilesize;
-						tilesize.str(optarg);
-						int size, border;
-						char c;
-						tilesize >> size;
-						if (tilesize.fail() || size<0) {
-							std::cerr << "Invalid tile size specification (" << optarg << ")" << std::endl;
+				case OPT_CHUNKSIZE : {
+						istringstream iss;
+						iss.str(optarg);
+						int size;
+						iss >> size;
+						if (iss.fail() || size < 0) {
+							std::cerr << "Invalid chunk size (" << optarg << ")" << std::endl;
 							usage();
 							exit(1);
 						}
-						generator.setTileSize(size, size);
-						tilesize >> c >> border;
-						if (!tilesize.fail()) {
-							if (c != '+' || border < 1) {
-								std::cerr << "Invalid tile border size specification (" << optarg << ")" << std::endl;
+						generator.setChunkSize(size);
+					}
+					break;
+				case 't': {
+						istringstream tilesize;
+						tilesize.str(optarg);
+						if (tilesize.str() == "block") {
+							generator.setTileSize(BLOCK_SIZE, BLOCK_SIZE);
+							generator.setTileOrigin(TILECORNER_AT_WORLDCENTER, TILECORNER_AT_WORLDCENTER);
+							}
+						else if (tilesize.str() == "chunk") {
+							generator.setTileSize(TILESIZE_CHUNK, TILESIZE_CHUNK);
+							generator.setTileOrigin(TILECENTER_AT_CHUNKCENTER, TILECENTER_AT_CHUNKCENTER);
+							}
+						else {
+							int size, border;
+							char c;
+							tilesize >> size;
+							if (tilesize.fail() || size<0) {
+								std::cerr << "Invalid tile size specification (" << optarg << ")" << std::endl;
 								usage();
 								exit(1);
 							}
-							generator.setTileBorderSize(border);
+							generator.setTileSize(size, size);
+							tilesize >> c >> border;
+							if (!tilesize.fail()) {
+								if (c != '+' || border < 1) {
+									std::cerr << "Invalid tile border size specification (" << optarg << ")" << std::endl;
+									usage();
+									exit(1);
+								}
+								generator.setTileBorderSize(border);
+							}
 						}
 					}
 					break;
