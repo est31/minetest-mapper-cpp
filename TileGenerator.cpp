@@ -163,8 +163,8 @@ TileGenerator::TileGenerator():
 	m_mapXEndNodeOffset(0),
 	m_mapYEndNodeOffset(0),
 	m_nextStoredYCoord(0),
-	m_tileXOrigin(TILE_WORLDCENTERED),
-	m_tileZOrigin(TILE_WORLDCENTERED),
+	m_tileXOrigin(TILECENTER_AT_WORLDCENTER),
+	m_tileZOrigin(TILECENTER_AT_WORLDCENTER),
 	m_tileWidth(0),
 	m_tileHeight(0),
 	m_tileBorderSize(1),
@@ -887,16 +887,16 @@ void TileGenerator::computeMapParameters()
 	// Set special values for origin (which depend on other paramters)
 	if (m_tileWidth) {
 		switch (m_tileXOrigin) {
-		case TILE_WORLDCENTERED:
+		case TILECENTER_AT_WORLDCENTER:
 			m_tileXOrigin = -m_tileWidth / 2;
 			break;
-		case TILE_AT_WORLDCENTER:
+		case TILECORNER_AT_WORLDCENTER:
 			m_tileXOrigin = 0;
 			break;
-		case TILE_MAPCENTERED:
+		case TILECENTER_AT_MAPCENTER:
 			m_tileXOrigin = m_xMin * 16 + m_mapXStartNodeOffset + mapWidth / 2 - m_tileWidth / 2;
 			break;
-		case TILE_AT_MAPCENTER:
+		case TILECORNER_AT_MAPCENTER:
 			m_tileXOrigin = m_xMin * 16 + m_mapXStartNodeOffset + mapWidth / 2;
 			break;
 		default:
@@ -907,16 +907,16 @@ void TileGenerator::computeMapParameters()
 	}
 	if (m_tileHeight) {
 		switch (m_tileZOrigin) {
-		case TILE_WORLDCENTERED:
+		case TILECENTER_AT_WORLDCENTER:
 			m_tileZOrigin = -m_tileHeight / 2;
 			break;
-		case TILE_AT_WORLDCENTER:
+		case TILECORNER_AT_WORLDCENTER:
 			m_tileZOrigin = 0;
 			break;
-		case TILE_MAPCENTERED:
+		case TILECENTER_AT_MAPCENTER:
 			m_tileZOrigin = (m_zMax + 1) * 16 - 1 - m_mapYStartNodeOffset - mapHeight / 2 - m_tileHeight / 2;
 			break;
-		case TILE_AT_MAPCENTER:
+		case TILECORNER_AT_MAPCENTER:
 			m_tileZOrigin = (m_zMax + 1) * 16 - 1 - m_mapYStartNodeOffset - mapHeight / 2;
 			break;
 		default:

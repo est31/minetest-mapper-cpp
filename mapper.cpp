@@ -726,15 +726,15 @@ int main(int argc, char *argv[])
 						NodeCoord coord;
 						if (iss.str() == "world") {
 							if (origin)
-								generator.setTileOrigin(TILE_AT_WORLDCENTER, TILE_AT_WORLDCENTER);
+								generator.setTileOrigin(TILECORNER_AT_WORLDCENTER, TILECORNER_AT_WORLDCENTER);
 							else
-								generator.setTileCenter(TILE_WORLDCENTERED, TILE_WORLDCENTERED);
+								generator.setTileCenter(TILECENTER_AT_WORLDCENTER, TILECENTER_AT_WORLDCENTER);
 						}
 						else if (iss.str() == "map") {
 							if (origin)
-								generator.setTileOrigin(TILE_AT_MAPCENTER, TILE_AT_MAPCENTER);
+								generator.setTileOrigin(TILECORNER_AT_MAPCENTER, TILECORNER_AT_MAPCENTER);
 							else
-								generator.setTileCenter(TILE_MAPCENTERED, TILE_MAPCENTERED);
+								generator.setTileCenter(TILECENTER_AT_MAPCENTER, TILECENTER_AT_MAPCENTER);
 						}
 						else {
 							bool result = true;
