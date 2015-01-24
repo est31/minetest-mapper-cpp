@@ -142,6 +142,37 @@ colors <file>:
     default:water_source	-
     default:water_flowing	-
 
+heightmap[-grey]:
+    Draw a height-map instead of a regular map.
+
+    A height map needs a custom colors file that contains only the nodes that
+    define the height. As a general directive, plants and other special nodes
+    should not be included in the file. Normally, water nodes should not be
+    included either.
+
+    The colors used are predefined and not yet configurable.
+
+    The colors support a maximum depth below sea level of 60, although below a
+    depth of 30 they become progressively darker.
+    Above sea level, they support a maximum height of 250.
+    Starting from height level 70, greyish colors are used (think: 'rocky')
+    Starting from height level 111, shades of white are used (think: 'snowy').
+
+    For '--heightmap-grey', a 255-level greyscale map is generated, with colors
+    ranging from black for level 0 and below, to white for 255 and above.
+
+heightmap-scale
+    Scale the heights of the map before computing the colors.
+
+    Note that the water level is not rendered correctly for scale factors
+    smaller than 1, nor for small non-integer scale factors.
+
+sealevel:
+    Set the sea level for the height map. Nodes at or below sea level are
+    drawn in blue, nodes above sea level are drawn in other colors.
+
+    The sea level *does* *not* reflect the presence of actual water.
+
 bgcolor:
     Background color of image, `--bgcolor #ffffff`
 

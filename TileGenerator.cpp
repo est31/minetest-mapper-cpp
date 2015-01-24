@@ -121,11 +121,21 @@ static inline int readBlockContent(const unsigned char *mapData, int version, in
 static const ColorEntry nodeColorNotDrawnObject;
 const ColorEntry *TileGenerator::NodeColorNotDrawn = &nodeColorNotDrawnObject;
 
+struct HeightMapColor
+{
+	int height[2];
+	Color color[2];
+};
+
 TileGenerator::TileGenerator():
 	verboseCoordinates(0),
 	verboseReadColors(0),
 	verboseStatistics(false),
 	progressIndicator(false),
+	m_heightMap(false),
+	m_heightMapGrey(false),
+	m_heightMapYScale(1),
+	m_seaLevel(0),
 	m_bgColor(255, 255, 255),
 	m_blockDefaultColor(0, 0, 0, 0),
 	m_scaleColor(0, 0, 0),
@@ -174,6 +184,45 @@ TileGenerator::TileGenerator():
 
 TileGenerator::~TileGenerator()
 {
+}
+
+void TileGenerator::setHeightMap(bool enable, bool grey)
+{
+	m_heightMap = enable;
+	m_heightMapGrey = grey;
+	m_heightMapColors.clear();
+	if (m_heightMapGrey) {
+		m_heightMapColors.push_back(HeightMapColor(INT_MIN, Color(0,0,0), -1, Color(0,0,0)));
+		m_heightMapColors.push_back(HeightMapColor(0, Color(0,0,0), 255, Color(255,255,255)));
+		m_heightMapColors.push_back(HeightMapColor(256, Color(255,255,255), INT_MAX, Color(255,255,255)));
+	}
+	else {
+		m_heightMapColors.push_back(HeightMapColor(INT_MIN, Color(4,4,4), -60, Color(4,4,4)));
+		m_heightMapColors.push_back(HeightMapColor(-60, Color(4,4,4), -45, Color(16,16,16)));
+		m_heightMapColors.push_back(HeightMapColor(-45, Color(16,16,16), -30, Color(16,32,64)));
+		m_heightMapColors.push_back(HeightMapColor(-30, Color(16,32,64), 0, Color(32,64,255)));
+
+		m_heightMapColors.push_back(HeightMapColor(1, Color(32,128,32), 10, Color(64,192,64)));		// Green
+		m_heightMapColors.push_back(HeightMapColor(10, Color(64,192,64), 20, Color(192,192,64)));	// Green -> Yellow
+		m_heightMapColors.push_back(HeightMapColor(20, Color(192,192,64), 40, Color(128,128,64)));	// Yellow
+		m_heightMapColors.push_back(HeightMapColor(40, Color(128,128,64), 50, Color(128,64,64)));	// Yellow -> Red
+		m_heightMapColors.push_back(HeightMapColor(50, Color(128,64,64), 70, Color(64,32,32)));		// Red
+		m_heightMapColors.push_back(HeightMapColor(70, Color(64,32,32), 80, Color(48,48,48)));		// Red -> Grey
+		m_heightMapColors.push_back(HeightMapColor(80, Color(48,48,48), 140, Color(96,96,96)));		// Grey
+		// Above 100, white suggests snowy :-)
+		m_heightMapColors.push_back(HeightMapColor(141, Color(160,160,160), 250, Color(250,250,250)));	// Grey -> White
+		m_heightMapColors.push_back(HeightMapColor(250, Color(250,250,250), INT_MAX, Color(250,250,250)));
+	}
+}
+
+void TileGenerator::setHeightMapYScale(float scale)
+{
+	m_heightMapYScale = scale;
+}
+
+void TileGenerator::setSeaLevel(int level)
+{
+	m_seaLevel = level;
 }
 
 void TileGenerator::setBgColor(const Color &bgColor)
@@ -1294,24 +1343,51 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 			for (int y = maxY; y >= minY; --y) {
 				int position = x + (y << 4) + (z << 8);
 				int content = readBlockContent(mapData, version, position);
+				#define nodeColor (*m_nodeIDColor[content])
+				//const ColorEntry &nodeColor = *m_nodeIDColor[content];
 				if (m_nodeIDColor[content] == NodeColorNotDrawn) {
 					continue;
 				}
-				if (m_nodeIDColor[content]) {
+				int height = pos.y * 16 + y;
+				if (m_heightMap) {
+					if (m_nodeIDColor[content] && nodeColor.a != 0) {
+						int adjustedHeight = int((height - m_seaLevel) * m_heightMapYScale + 0.5);
+						rowIsEmpty = false;
+						float r = 0;
+						float g = 0;
+						float b = 0;
+						int n = 0;
+						for (std::list<HeightMapColor>::iterator i = m_heightMapColors.begin(); i != m_heightMapColors.end(); i++) {
+							HeightMapColor &colorSpec = *i;
+							if (adjustedHeight >= colorSpec.height[0] && adjustedHeight <= colorSpec.height[1]) {
+								float weight = (float) (colorSpec.height[1] - adjustedHeight + 1) / (colorSpec.height[1] - colorSpec.height[0] + 1);
+								for (int j = 0; j < 2; j++) {
+									r += colorSpec.color[j].r * weight;
+									g += colorSpec.color[j].g * weight;
+									b += colorSpec.color[j].b * weight;
+									weight = 1 - weight;
+								}
+								n++;
+							}
+						}
+						pixel = PixelAttribute(Color(int(r / n + 0.5), int(g / n + 0.5), int(b / n + 0.5)), height);
+						m_readedPixels[z] |= (1 << x);
+						break;
+					}
+				}
+				else if (m_nodeIDColor[content]) {
 					rowIsEmpty = false;
-					#define nodeColor (*m_nodeIDColor[content])
-					//const ColorEntry &nodeColor = *m_nodeIDColor[content];
-					pixel.mixUnder(PixelAttribute(nodeColor, pos.y * 16 + y));
+					pixel.mixUnder(PixelAttribute(nodeColor, height));
 					if ((m_drawAlpha && nodeColor.a == 0xff) || (!m_drawAlpha && nodeColor.a != 0)) {
 						m_readedPixels[z] |= (1 << x);
 						break;
 					}
-					#undef nodeColor
 				} else {
 					NodeID2NameMap::iterator blockName = m_nameMap.find(content);
 					if (blockName != m_nameMap.end())
 						m_unknownNodes.insert(blockName->second);
 				}
+				#undef nodeColor
 			}
 			#undef pixel
 		}

@@ -20,6 +20,7 @@
 #include <map>
 #endif
 #include <set>
+#include <list>
 #include <stdint.h>
 #include <string>
 #include <string>
@@ -57,6 +58,12 @@ private:
 	typedef std::map<int, std::string> NodeID2NameMap;
 #endif
 public:
+	struct HeightMapColor
+	{
+		HeightMapColor(int h0, Color c0, int h1, Color c1) : height{h0, h1}, color{c0, c1} {}
+		int height[2];
+		Color color[2];
+	};
 	struct DrawObject {
 		void setCenter(const NodeCoord &c) { haveCenter = true; center = c; }
 		void setCorner1(const NodeCoord &c) { haveCenter = false; corner1 = c; }
@@ -94,6 +101,9 @@ public:
 
 	TileGenerator();
 	~TileGenerator();
+	void setHeightMap(bool enable, bool grey);
+	void setHeightMapYScale(float scale);
+	void setSeaLevel(int level);
 	void setBgColor(const Color &bgColor);
 	void setBlockDefaultColor(const Color &olor);
 	void setScaleColor(const Color &scaleColor);
@@ -177,6 +187,11 @@ public:
 	bool progressIndicator;
 
 private:
+	bool m_heightMap;
+	bool m_heightMapGrey;
+	float m_heightMapYScale;
+	int m_seaLevel;
+	std::list<HeightMapColor> m_heightMapColors;
 	Color m_bgColor;
 	Color m_blockDefaultColor;
 	Color m_scaleColor;

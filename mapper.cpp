@@ -31,6 +31,11 @@ using namespace std;
 #define OPT_DRAWAIR			0x85
 #define OPT_VERBOSE_SEARCH_COLORS	0x86
 #define OPT_CHUNKSIZE			0x87
+#define OPT_HEIGHTMAP			0x88
+#define OPT_HEIGHTMAPGREY		0x89
+#define OPT_HEIGHTMAPYSCALE		0x8a
+#define OPT_HEIGHT_LEVEL0		0x8b
+
 
 // Will be replaced with the actual name and location of the executable (if found)
 string executableName = "minetestmapper";
@@ -66,6 +71,9 @@ void usage()
 			"  -i/--input <world_path>\n"
 			"  -o/--output <output_image.png>\n"
 			"  --colors <file>\n"
+			"  --heightmap[-grey]\n"
+			"  --heightmap-scale <scale>\n"
+			"  --height-level-0 <level>\n"
 			"  --bgcolor <color>\n"
 			"  --blockcolor <color>\n"
 			"  --scalecolor <color>\n"
@@ -522,6 +530,11 @@ int main(int argc, char *argv[])
 		{"input", required_argument, 0, 'i'},
 		{"output", required_argument, 0, 'o'},
 		{"colors", required_argument, 0, 'C'},
+		{"heightmap", no_argument, 0, OPT_HEIGHTMAP},
+		{"heightmap-grey", no_argument, 0, OPT_HEIGHTMAPGREY},
+		{"heightmap-gray", no_argument, 0, OPT_HEIGHTMAPGREY},
+		{"heightmap-scale", required_argument, 0, OPT_HEIGHTMAPYSCALE},
+		{"height-level-0", required_argument, 0, OPT_HEIGHT_LEVEL0},
 		{"bgcolor", required_argument, 0, 'b'},
 		{"blockcolor", required_argument, 0, OPT_BLOCKCOLOR},
 		{"scalecolor", required_argument, 0, 's'},
@@ -605,6 +618,34 @@ int main(int argc, char *argv[])
 					break;
 				case 'b':
 					generator.setBgColor(Color(optarg, 0));
+					break;
+				case OPT_HEIGHTMAP:
+					generator.setHeightMap(true, false);
+					break;
+				case OPT_HEIGHTMAPGREY:
+					generator.setHeightMap(true, true);
+					break;
+				case OPT_HEIGHTMAPYSCALE:
+					if (isdigit(optarg[0]) || ((optarg[0]=='-' || optarg[0]=='+') && isdigit(optarg[1]))) {
+						float scale = atof(optarg);
+						generator.setHeightMapYScale(scale);
+					}
+					else {
+						std::cerr << "Invalid parameter to '" << long_options[option_index].name << "': '" << optarg << "'" << std::endl;
+						usage();
+						exit(1);
+					}
+					break;
+				case OPT_HEIGHT_LEVEL0:
+					if (isdigit(optarg[0]) || ((optarg[0]=='-' || optarg[0]=='+') && isdigit(optarg[1]))) {
+						int level = atoi(optarg);
+						generator.setSeaLevel(level);
+					}
+					else {
+						std::cerr << "Invalid parameter to '" << long_options[option_index].name << "': '" << optarg << "'" << std::endl;
+						usage();
+						exit(1);
+					}
 					break;
 				case OPT_BLOCKCOLOR:
 					generator.setBlockDefaultColor(Color(optarg, 0));
