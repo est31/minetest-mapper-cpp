@@ -36,6 +36,15 @@
 #define TILECENTER_AT_MAPCENTER		(INT_MIN)
 #define TILECORNER_AT_MAPCENTER		(INT_MIN + 1)
 
+#define DRAWSCALE_NONE			0x00
+#define DRAWSCALE_MASK			0x0f
+#define DRAWSCALE_LEFT			0x01
+#define DRAWSCALE_RIGHT			0x02
+#define DRAWSCALE_TOP			0x04
+#define DRAWSCALE_BOTTOM		0x08
+
+#define SCALESIZE			40
+
 class TileGenerator
 {
 private:
@@ -92,7 +101,7 @@ public:
 	Color parseColor(const Color &color);
 	void setDrawOrigin(bool drawOrigin);
 	void setDrawPlayers(bool drawPlayers);
-	void setDrawScale(bool drawScale);
+	void setDrawScale(int scale);
 	void setDrawAlpha(bool drawAlpha);
 	void setDrawAir(bool drawAir);
 	void drawObject(const DrawObject &object) { m_drawObjects.push_back(object); }
@@ -155,6 +164,10 @@ private:
 	int worldZ2ImageY(int val) const;
 	int worldBlockX2StoredX(int xPos) const { return (xPos - m_xMin) * 16; }
 	int worldBlockZ2StoredY(int zPos) const { return (m_zMax - zPos) * 16; }
+	int borderTop() const { return ((m_drawScale & DRAWSCALE_TOP) ? SCALESIZE : 0); }
+	int borderBottom() const { return ((m_drawScale & DRAWSCALE_BOTTOM) ? SCALESIZE : 0); }
+	int borderLeft() const { return ((m_drawScale & DRAWSCALE_LEFT) ? SCALESIZE : 0); }
+	int borderRight() const { return ((m_drawScale & DRAWSCALE_RIGHT) ? SCALESIZE : 0); }
 
 public:
 	int verboseCoordinates;
@@ -171,11 +184,10 @@ private:
 	Color m_tileBorderColor;
 	bool m_drawOrigin;
 	bool m_drawPlayers;
-	bool m_drawScale;
+	int m_drawScale;
 	bool m_drawAlpha;
 	bool m_drawAir;
 	bool m_shading;
-	int m_border;
 	std::string m_backend;
 	bool m_shrinkGeometry;
 	bool m_blockGeometry;

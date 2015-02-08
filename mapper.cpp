@@ -14,6 +14,7 @@
 #include <string>
 #include <cctype>
 #include <sstream>
+#include <cstring>
 #include <stdexcept>
 #include <fcntl.h>
 #include <unistd.h>
@@ -71,7 +72,7 @@ void usage()
 			"  --playercolor <color>\n"
 			"  --origincolor <color>\n"
 			"  --tilebordercolor <color>\n"
-			"  --drawscale\n"
+			"  --drawscale[=left,top]\n"
 			"  --drawplayers\n"
 			"  --draworigin\n"
 			"  --drawalpha[=cumulative|cumulative-darken|average|none]\n"
@@ -528,7 +529,7 @@ int main(int argc, char *argv[])
 		{"playercolor", required_argument, 0, 'p'},
 		{"draworigin", no_argument, 0, 'R'},
 		{"drawplayers", no_argument, 0, 'P'},
-		{"drawscale", no_argument, 0, 'S'},
+		{"drawscale", optional_argument, 0, 'S'},
 		{"drawalpha", optional_argument, 0, 'e'},
 		{"drawair", no_argument, 0, OPT_DRAWAIR},
 		{"drawpoint", required_argument, 0, OPT_DRAW_OBJECT},
@@ -627,7 +628,25 @@ int main(int argc, char *argv[])
 					generator.setDrawPlayers(true);
 					break;
 				case 'S':
-					generator.setDrawScale(true);
+					if (optarg && *optarg) {
+						if (0 == strcasecmp(optarg,"left"))
+							generator.setDrawScale(DRAWSCALE_LEFT);
+						else if (0 == strcasecmp(optarg,"top"))
+							generator.setDrawScale(DRAWSCALE_TOP);
+						else if (0 == strcasecmp(optarg,"left,top"))
+							generator.setDrawScale(DRAWSCALE_LEFT | DRAWSCALE_TOP);
+						else if (0 == strcasecmp(optarg,"top,left"))
+							generator.setDrawScale(DRAWSCALE_LEFT | DRAWSCALE_TOP);
+						else {
+							std::cerr << "Invalid parameter to '" << long_options[option_index].name
+								<< "': '" << optarg << "' (expected: left,top)" << std::endl;
+							usage();
+							exit(1);
+						}
+					}
+					else {
+						generator.setDrawScale(DRAWSCALE_LEFT | DRAWSCALE_TOP);
+					}
 					break;
 				case 'v':
 					if (optarg && isdigit(optarg[0]) && optarg[1] == '\0') {

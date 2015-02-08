@@ -134,11 +134,10 @@ TileGenerator::TileGenerator():
 	m_tileBorderColor(0, 0, 0),
 	m_drawOrigin(false),
 	m_drawPlayers(false),
-	m_drawScale(false),
+	m_drawScale(DRAWSCALE_NONE),
 	m_drawAlpha(false),
 	m_drawAir(false),
 	m_shading(true),
-	m_border(0),
 	m_backend(DEFAULT_BACKEND),
 	m_shrinkGeometry(true),
 	m_blockGeometry(false),
@@ -261,12 +260,9 @@ void TileGenerator::setDrawPlayers(bool drawPlayers)
 	m_drawPlayers = drawPlayers;
 }
 
-void TileGenerator::setDrawScale(bool drawScale)
+void TileGenerator::setDrawScale(int scale)
 {
-	m_drawScale = drawScale;
-	if (m_drawScale) {
-		m_border = 40;
-	}
+	m_drawScale = (scale & DRAWSCALE_MASK);
 }
 
 void TileGenerator::setDrawAlpha(bool drawAlpha)
@@ -861,8 +857,8 @@ void TileGenerator::pushPixelRows(int zPosLimit) {
 				continue;
 			}
 #ifdef DEBUG
-			{ int ix = mapX2ImageX(mapX); assert(ix - m_border >= 0 && ix - m_border < m_pictWidth); }
-			{ int iy = mapY2ImageY(mapY); assert(iy - m_border >= 0 && iy - m_border < m_pictHeight); }
+			{ int ix = mapX2ImageX(mapX); assert(ix - borderLeft() >= 0 && ix - borderLeft() - borderRight() < m_pictWidth); }
+			{ int iy = mapY2ImageY(mapY); assert(iy - borderTop() >= 0 && iy - borderTop() - borderBottom() < m_pictHeight); }
 #endif
 			if (pixel.is_valid() || pixel.color().to_uint())
 				m_image->tpixels[mapY2ImageY(mapY)][mapX2ImageX(mapX)] = pixel.color().to_libgd();
@@ -1035,7 +1031,7 @@ void TileGenerator::computeMapParameters(const std::string &input)
 	}
 
 	// Print some useful messages in cases where it may not be possible to generate the image...
-	long long pixels = static_cast<long long>(m_pictWidth + m_border) * (m_pictHeight + m_border);
+	long long pixels = static_cast<long long>(m_pictWidth + borderLeft() + borderRight()) * (m_pictHeight + borderTop() + borderBottom());
 	// Study the libgd code to known why the maximum is the following:
 	long long max_pixels = INT_MAX - INT_MAX % m_pictHeight;
 	if (pixels > max_pixels) {
@@ -1053,14 +1049,16 @@ void TileGenerator::computeMapParameters(const std::string &input)
 
 void TileGenerator::createImage()
 {
-	m_image = gdImageCreateTrueColor(m_pictWidth + m_border, m_pictHeight + m_border);
+	int totalPictHeight = m_pictHeight + borderTop() + borderBottom();
+	int totalPictWidth = m_pictWidth + borderLeft() + borderRight();
+	m_image = gdImageCreateTrueColor(totalPictWidth, totalPictHeight);
 	if (!m_image) {
 		ostringstream oss;
-		oss << "Failed to allocate " << m_pictWidth + m_border << "x" << m_pictHeight + m_border << " image";
+		oss << "Failed to allocate " << totalPictWidth << "x" << totalPictHeight << " image";
 		throw std::runtime_error(oss.str());
 	}
 	// Background
-	gdImageFilledRectangle(m_image, 0, 0, m_pictWidth + m_border - 1, m_pictHeight + m_border -1, m_bgColor.to_libgd());
+	gdImageFilledRectangle(m_image, 0, 0, totalPictWidth - 1, totalPictHeight -1, m_bgColor.to_libgd());
 
 	// Draw tile borders
 	if (m_tileWidth && m_tileBorderSize) {
@@ -1068,10 +1066,10 @@ void TileGenerator::createImage()
 		for (int i = 0; i < m_tileBorderXCount; i++) {
 			int xPos = m_tileMapXOffset + i * (m_tileWidth + m_tileBorderSize);
 #ifdef DEBUG
-			int xPos2 = mapX2ImageX(m_tileMapXOffset + i * m_tileWidth) - m_border - 1;
+			int xPos2 = mapX2ImageX(m_tileMapXOffset + i * m_tileWidth) - borderLeft() - 1;
 			assert(xPos == xPos2);
 #endif
-			gdImageFilledRectangle(m_image, xPos + m_border, m_border, xPos + (m_tileBorderSize-1) + m_border, m_pictHeight + m_border - 1, borderColor);
+			gdImageFilledRectangle(m_image, xPos + borderLeft(), borderTop(), xPos + (m_tileBorderSize-1) + borderLeft(), m_pictHeight + borderTop() - 1, borderColor);
 		}
 	}
 	if (m_tileHeight && m_tileBorderSize) {
@@ -1079,10 +1077,10 @@ void TileGenerator::createImage()
 		for (int i = 0; i < m_tileBorderYCount; i++) {
 			int yPos = m_tileMapYOffset + i * (m_tileHeight + m_tileBorderSize);
 #ifdef DEBUG
-			int yPos2 = mapY2ImageY(m_tileMapYOffset + i * m_tileHeight) - m_border - 1;
+			int yPos2 = mapY2ImageY(m_tileMapYOffset + i * m_tileHeight) - borderTop() - 1;
 			assert(yPos == yPos2);
 #endif
-			gdImageFilledRectangle(m_image, m_border, yPos + m_border, m_pictWidth + m_border - 1, yPos + (m_tileBorderSize-1) + m_border, borderColor);
+			gdImageFilledRectangle(m_image, borderLeft(), yPos + borderTop(), m_pictWidth + borderLeft() - 1, yPos + (m_tileBorderSize-1) + borderTop(), borderColor);
 		}
 	}
 }
@@ -1325,36 +1323,44 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 void TileGenerator::renderScale()
 {
 	int color = m_scaleColor.to_libgd();
-	gdImageString(m_image, gdFontGetMediumBold(), 24, 0, reinterpret_cast<unsigned char *>(const_cast<char *>("X")), color);
-	gdImageString(m_image, gdFontGetMediumBold(), 2, 24, reinterpret_cast<unsigned char *>(const_cast<char *>("Z")), color);
+	if ((m_drawScale & DRAWSCALE_LEFT) && (m_drawScale & DRAWSCALE_TOP)) {
+		gdImageString(m_image, gdFontGetMediumBold(), 24, 0, reinterpret_cast<unsigned char *>(const_cast<char *>("X")), color);
+		gdImageString(m_image, gdFontGetMediumBold(), 2, 24, reinterpret_cast<unsigned char *>(const_cast<char *>("Z")), color);
+	}
 
 	string scaleText;
 
-	for (int i = (m_xMin / 4) * 4; i <= m_xMax; i += 4) {
-		stringstream buf1, buf2;
-		buf1 << i * 16;
-		buf2 << "(" << i << ")";
-		int xPos = worldX2ImageX(i * 16);
+	if ((m_drawScale & DRAWSCALE_TOP)) {
+		for (int i = (m_xMin / 4) * 4; i <= m_xMax; i += 4) {
+			stringstream buf1, buf2;
+			buf1 << i * 16;
+			buf2 << "(" << i << ")";
+			int xPos = worldX2ImageX(i * 16);
 
-		scaleText = buf1.str();
-		gdImageString(m_image, gdFontGetMediumBold(), xPos + 2, 0, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
-		scaleText = buf2.str();
-		gdImageString(m_image, gdFontGetTiny(), xPos + 2, 16, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
-		gdImageLine(m_image, xPos, 0, xPos, m_border - 1, color);
+			scaleText = buf1.str();
+			gdImageString(m_image, gdFontGetMediumBold(), xPos + 2, 0, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
+			scaleText = buf2.str();
+			gdImageString(m_image, gdFontGetTiny(), xPos + 2, 16, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
+			gdImageLine(m_image, xPos, 0, xPos, borderTop() - 1, color);
+		}
+	}
+	
+	if ((m_drawScale & DRAWSCALE_LEFT)) {
+		for (int i = (m_zMax / 4) * 4; i >= m_zMin; i -= 4) {
+			stringstream buf1, buf2;
+			buf1 << i * 16;
+			buf2 << "(" << i << ")";
+			int yPos = worldZ2ImageY(i * 16);
+
+			scaleText = buf1.str();
+			gdImageString(m_image, gdFontGetMediumBold(), 2, yPos, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
+			scaleText = buf2.str();
+			gdImageString(m_image, gdFontGetTiny(), 2, yPos-10, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
+			gdImageLine(m_image, 0, yPos, borderLeft() - 1, yPos, color);
+		}
 	}
 
-	for (int i = (m_zMax / 4) * 4; i >= m_zMin; i -= 4) {
-		stringstream buf1, buf2;
-		buf1 << i * 16;
-		buf2 << "(" << i << ")";
-		int yPos = worldZ2ImageY(i * 16);
-
-		scaleText = buf1.str();
-		gdImageString(m_image, gdFontGetMediumBold(), 2, yPos, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
-		scaleText = buf2.str();
-		gdImageString(m_image, gdFontGetTiny(), 2, yPos-10, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
-		gdImageLine(m_image, 0, yPos, m_border - 1, yPos, color);
-	}
+	// DRAWSCALE_RIGHT and DRAWSCALE_BOTTOM not implemented - getting the text positioned right seems not trivial (??)
 }
 
 void TileGenerator::renderOrigin()
@@ -1433,11 +1439,11 @@ void TileGenerator::renderDrawObjects(void)
 			}
 			else {
 				if (o->haveCenter)
-					o->center.dimension[i] += m_border;
+					o->center.dimension[i] += i ? borderTop() : borderLeft();
 				else
-					o->corner1.dimension[i] += m_border;
+					o->corner1.dimension[i] += i ? borderTop() : borderLeft();
 				if (!o->haveDimensions)
-					o->corner2.dimension[i] += m_border;
+					o->corner2.dimension[i] += i ? borderTop() : borderLeft();
 			}
 		}
 
@@ -1561,9 +1567,9 @@ void TileGenerator::printUnknown()
 inline int TileGenerator::mapX2ImageX(int val) const
 {
 	if (m_tileWidth && m_tileBorderSize)
-		val += ((val - m_tileMapXOffset + m_tileWidth) / m_tileWidth) * m_tileBorderSize + m_border;
+		val += ((val - m_tileMapXOffset + m_tileWidth) / m_tileWidth) * m_tileBorderSize + borderLeft();
 	else
-		val += m_border;
+		val += borderLeft();
 	return val;
 }
 
@@ -1571,9 +1577,9 @@ inline int TileGenerator::mapX2ImageX(int val) const
 inline int TileGenerator::mapY2ImageY(int val) const
 {
 	if (m_tileHeight && m_tileBorderSize)
-		val += ((val - m_tileMapYOffset + m_tileHeight) / m_tileHeight) * m_tileBorderSize + m_border;
+		val += ((val - m_tileMapYOffset + m_tileHeight) / m_tileHeight) * m_tileBorderSize + borderTop();
 	else
-		val += m_border;
+		val += borderTop();
 	return val;
 }
 
