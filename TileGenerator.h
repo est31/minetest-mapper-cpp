@@ -205,7 +205,6 @@ private:
 	int m_mapYStartNodeOffset;
 	int m_mapXEndNodeOffset;
 	int m_mapYEndNodeOffset;
-	int m_nextStoredYCoord;
 	int m_tileXOrigin;
 	int m_tileZOrigin;
 	int m_tileXCentered;

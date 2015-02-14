@@ -26,7 +26,7 @@ PixelAttributes::~PixelAttributes()
 	freeAttributes();
 }
 
-void PixelAttributes::setParameters(int width, int lines)
+void PixelAttributes::setParameters(int width, int lines, int nextY)
 {
 	freeAttributes();
 	m_width = width + 1; // 1px gradient calculation
@@ -36,6 +36,7 @@ void PixelAttributes::setParameters(int width, int lines)
 	m_emptyLine = m_lastLine + 1;
 	m_lineCount = m_emptyLine + 1;
 	m_firstY = 0;
+	m_nextY = nextY;
 	m_lastY = -1;
 	m_firstUnshadedY = 0;
 
@@ -73,6 +74,7 @@ void PixelAttributes::scroll(int keepY)
 		}
 
 		m_firstY += scroll;
+		m_nextY = m_firstY;
 		m_firstUnshadedY -= scroll;
 		if (m_firstUnshadedY < m_firstY) m_firstUnshadedY = m_firstY;
 	}

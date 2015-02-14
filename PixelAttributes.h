@@ -70,10 +70,11 @@ class PixelAttributes
 public:
 	PixelAttributes();
 	virtual ~PixelAttributes();
-	void setParameters(int width, int lines);
+	void setParameters(int width, int lines, int nextY);
 	void scroll(int keepY);
 	PixelAttribute &attribute(int y, int x);
 	void renderShading(bool drawAlpha);
+	int getNextY(void) { return m_nextY; }
 	void setLastY(int y);
 	int getLastY(void) { return m_lastY; }
 
@@ -90,6 +91,7 @@ private:
 	PixelAttribute **m_pixelAttributes;
 	int m_width;
 	int m_firstY;
+	int m_nextY;
 	int m_lastY;
 	int m_firstUnshadedY;
 };

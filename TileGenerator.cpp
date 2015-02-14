@@ -163,7 +163,6 @@ TileGenerator::TileGenerator():
 	m_mapYStartNodeOffset(0),
 	m_mapXEndNodeOffset(0),
 	m_mapYEndNodeOffset(0),
-	m_nextStoredYCoord(0),
 	m_tileXOrigin(TILECENTER_AT_WORLDCENTER),
 	m_tileZOrigin(TILECENTER_AT_WORLDCENTER),
 	m_tileWidth(0),
@@ -851,7 +850,7 @@ void TileGenerator::pushPixelRows(int zPosLimit) {
 	if (m_shading)
 		m_blockPixelAttributes.renderShading(m_drawAlpha);
 	int y;
-	for (y = m_nextStoredYCoord; y <= m_blockPixelAttributes.getLastY() && y < worldBlockZ2StoredY(m_zMin - 1) + m_mapYEndNodeOffset; y++) {
+	for (y = m_blockPixelAttributes.getNextY(); y <= m_blockPixelAttributes.getLastY() && y < worldBlockZ2StoredY(m_zMin - 1) + m_mapYEndNodeOffset; y++) {
 		for (int x = m_mapXStartNodeOffset; x < worldBlockX2StoredX(m_xMax + 1) + m_mapXEndNodeOffset; x++) {
 			int mapX = x - m_mapXStartNodeOffset;
 			int mapY = y - m_mapYStartNodeOffset;
@@ -873,7 +872,6 @@ void TileGenerator::pushPixelRows(int zPosLimit) {
 	int yLimit = worldBlockZ2StoredY(zPosLimit);
 	if (y <= yLimit) {
 		m_blockPixelAttributes.scroll(yLimit);
-		m_nextStoredYCoord = yLimit;
 	}
 }
 
@@ -944,7 +942,7 @@ void TileGenerator::computeMapParameters(const std::string &input)
 	m_storedHeight = (m_zMax - m_zMin + 1) * 16;
 	int mapWidth = m_storedWidth - m_mapXStartNodeOffset + m_mapXEndNodeOffset;
 	int mapHeight = m_storedHeight - m_mapYStartNodeOffset + m_mapYEndNodeOffset;
-	m_blockPixelAttributes.setParameters(m_storedWidth, 16);
+	m_blockPixelAttributes.setParameters(m_storedWidth, 16, m_mapYStartNodeOffset);
 
 	// Set special values for origin (which depend on other paramters)
 	if (m_tileWidth) {
@@ -1035,8 +1033,6 @@ void TileGenerator::computeMapParameters(const std::string &input)
 				// Behavior selection
 				false);
 	}
-
-	m_nextStoredYCoord = m_mapYStartNodeOffset;
 
 	// Print some useful messages in cases where it may not be possible to generate the image...
 	long long pixels = static_cast<long long>(m_pictWidth + m_border) * (m_pictHeight + m_border);
