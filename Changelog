@@ -1,3 +1,56 @@
+[20 feb 2015]
+    Features:
+	- A custom major and minor division can now be specified for the scale.
+	- When the major scale division is divisible by 16, block numbers are
+	  also included on the scale
+	- Instead of a regular map, a height map can now be generated as well.
+		- It can be generated in shades of a single color, or in multiple colors.
+		- For multiple colors, a height-map colors file is needed. Two sample
+		  versions are included: a file which produces nice maps on standard
+		  minetest worlds (mapgen v6), while still covering a reasonably large
+		  range of heights for other worlds, and a rainbow colors file.
+		- A nodes file is also needed, which specifies which nodes should be
+		  considered (and hence, which ones should be ignored) when determining
+		  the height of a region of the world. A nodes file is included.
+		- Optionally, a height scale can be drawn at the bottom of the map.
+	- The map can now be generated in a reduced size. This means that it is finally
+		possible to generate a full map of a maximal world, albeit at a lower
+		resolution
+		(at most 1:2 on 64-bit systems and 1:4 on 32-bit systems). Overview maps
+		at 1:16 are another use of this feature.
+		The following scale factors are supported: 1:1, 1:2, 1:4, 1:8 and 1:16.
+
+		Note that this version of minetestmapper also supports generating a
+		huge map in sections, and pasting them together with an external program.
+		See below.
+
+    Enhancements:
+	- The left scale was widened, as it didn't accomodate 5-digit coordinates
+	- The --tiles option gained the shorthand values 'block' and 'chunk', which
+		align the tiles with minetest's block and chunk boundaries.
+		The default chunk size is obtained from the world's data files.
+		An option --chunksize was also added to override the default chunk size.
+	- For a stack of only transparent nodes, the topmost height is now used.
+		(instead of the bottom-most height)
+	- The progress indicator was improved
+	- Ice was made slightly transparent in the included colors file
+	- A small number of symbolic colors are now recognised. In addition, they
+		can be modified by mixing in several basic colors (e.g. white to make
+		the color lighter, or black to make it darker)
+	- It is now possible to draw a scale on just the left or the top side. This
+		means that it is possible to generate a map in independent sections, which
+		can be assembled into a large map later (using another application).
+	- The documentation was improved. A separate user manual and a build manual
+		are now included.
+
+    Bugfixes:
+	- Fixed incorrect shading near 'holes' in the world map.
+	- Fixed wrong color for default:water_source in colors.txt
+	- Parts of the scale are no longer written into the top-left corner of the map,
+		where they would sometimes clobber the axis names or each other.
+	(Some other bugs were fixed as a side-effect of the new features and enhancements.
+	 Unfortunately, no good record exists...)
+
 [20 jun 2014]
     Features:
 	- Added the ability to select a method of transparency computation for
