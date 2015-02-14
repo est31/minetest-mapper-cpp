@@ -213,7 +213,16 @@ void PixelAttribute::add(const PixelAttribute &p)
 		m_b *= m_a;
 		m_n = 1;
 	}
-	if (!p.m_n) {
+	if (!is_valid()) {
+		m_r = p.m_r;
+		m_g = p.m_g;
+		m_b = p.m_b;
+		m_a = p.m_a;
+		m_t = 0;
+		m_h = p.m_h;
+		m_n = p.m_n;
+	}
+	else if (!p.m_n) {
 		m_r += p.m_r * p.m_a;
 		m_g += p.m_g * p.m_a;
 		m_b += p.m_b * p.m_a;
