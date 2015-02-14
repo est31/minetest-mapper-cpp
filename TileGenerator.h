@@ -43,7 +43,8 @@
 #define DRAWSCALE_TOP			0x04
 #define DRAWSCALE_BOTTOM		0x08
 
-#define SCALESIZE			40
+#define SCALESIZE_HOR			40
+#define SCALESIZE_VERT			50
 
 class TileGenerator
 {
@@ -164,10 +165,10 @@ private:
 	int worldZ2ImageY(int val) const;
 	int worldBlockX2StoredX(int xPos) const { return (xPos - m_xMin) * 16; }
 	int worldBlockZ2StoredY(int zPos) const { return (m_zMax - zPos) * 16; }
-	int borderTop() const { return ((m_drawScale & DRAWSCALE_TOP) ? SCALESIZE : 0); }
-	int borderBottom() const { return ((m_drawScale & DRAWSCALE_BOTTOM) ? SCALESIZE : 0); }
-	int borderLeft() const { return ((m_drawScale & DRAWSCALE_LEFT) ? SCALESIZE : 0); }
-	int borderRight() const { return ((m_drawScale & DRAWSCALE_RIGHT) ? SCALESIZE : 0); }
+	int borderTop() const { return ((m_drawScale & DRAWSCALE_TOP) ? SCALESIZE_HOR : 0); }
+	int borderBottom() const { return ((m_drawScale & DRAWSCALE_BOTTOM) ? SCALESIZE_HOR : 0); }
+	int borderLeft() const { return ((m_drawScale & DRAWSCALE_LEFT) ? SCALESIZE_VERT : 0); }
+	int borderRight() const { return ((m_drawScale & DRAWSCALE_RIGHT) ? SCALESIZE_VERT : 0); }
 
 public:
 	int verboseCoordinates;
