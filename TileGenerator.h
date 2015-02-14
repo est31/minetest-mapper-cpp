@@ -123,6 +123,8 @@ public:
 	void setDrawPlayers(bool drawPlayers);
 	void setDrawScale(int scale);
 	void setDrawHeightScale(int scale);
+	void setSideScaleInterval(int major, int minor);
+	void setHeightScaleInterval(int major, int minor);
 	void setDrawAlpha(bool drawAlpha);
 	void setDrawAir(bool drawAir);
 	void drawObject(const DrawObject &object) { m_drawObjects.push_back(object); }
@@ -235,6 +237,10 @@ private:
 	int m_scaleFactor;
 	bool m_sqliteCacheWorldRow;
 	int m_chunkSize;
+	int m_sideScaleMajor;
+	int m_sideScaleMinor;
+	int m_heightScaleMajor;
+	int m_heightScaleMinor;
 
 	DB *m_db;
 	gdImagePtr m_image;

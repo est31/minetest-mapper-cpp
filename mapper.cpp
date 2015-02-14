@@ -38,6 +38,7 @@ using namespace std;
 #define OPT_HEIGHTMAPCOLORSFILE		0x8c
 #define OPT_DRAWHEIGHTSCALE		0x8d
 #define OPT_SCALEFACTOR			0x8e
+#define OPT_SCALEINTERVAL		0x8f
 
 // Will be replaced with the actual name and location of the executable (if found)
 string executableName = "minetestmapper";
@@ -87,7 +88,9 @@ void usage()
 			"  --origincolor <color>\n"
 			"  --tilebordercolor <color>\n"
 			"  --drawscale[=left,top]\n"
+			"  --sidescale-interval <major>[[,:]<minor>]\n"
 			"  --drawheightscale\n"
+			"  --heightscale-interval <major>[[,:]<minor>]\n"
 			"  --drawplayers\n"
 			"  --draworigin\n"
 			"  --drawalpha[=cumulative|cumulative-darken|average|none]\n"
@@ -555,7 +558,9 @@ int main(int argc, char *argv[])
 		{"draworigin", no_argument, 0, 'R'},
 		{"drawplayers", no_argument, 0, 'P'},
 		{"drawscale", optional_argument, 0, 'S'},
+		{"sidescale-interval", required_argument, 0, OPT_SCALEINTERVAL},
 		{"drawheightscale", no_argument, 0, OPT_DRAWHEIGHTSCALE},
+		{"heightscale-interval", required_argument, 0, OPT_SCALEINTERVAL},
 		{"drawalpha", optional_argument, 0, 'e'},
 		{"drawair", no_argument, 0, OPT_DRAWAIR},
 		{"drawpoint", required_argument, 0, OPT_DRAW_OBJECT},
@@ -732,6 +737,60 @@ int main(int argc, char *argv[])
 					break;
 				case OPT_DRAWHEIGHTSCALE :
 					generator.setDrawHeightScale(DRAWHEIGHTSCALE_BOTTOM);
+					break;
+				case OPT_SCALEINTERVAL: {
+						istringstream arg;
+						arg.str(optarg);
+						int major;
+						int minor;
+						char sep;
+						arg >> major;
+						if (major < 0 || !isdigit(*optarg) || arg.fail()) {
+							std::cerr << "Invalid parameter to '" << long_options[option_index].name
+								<< "': '" << optarg << "' (expected: <major>[,<minor>]" << std::endl;
+							usage();
+							exit(1);
+						}
+						arg >> std::ws >> sep >> std::ws;
+						if (!arg.fail()) {
+							if ((sep != ',' && sep != ':') || !isdigit(arg.peek())) {
+								std::cerr << "Invalid parameter to '" << long_options[option_index].name
+									<< "': '" << optarg << "' (expected: <major>[,<minor>]" << std::endl;
+								usage();
+								exit(1);
+							}
+							arg >> minor;
+							if (minor < 0) {
+								std::cerr << "Invalid parameter to '" << long_options[option_index].name
+									<< "': '" << optarg << "' (expected: <major>[,<minor>]" << std::endl;
+								usage();
+								exit(1);
+							}
+						}
+						else {
+							minor = 0;
+						}
+						if (minor && sep == ':') {
+							if (major % minor) {
+								std::cerr << long_options[option_index].name << ": Cannot divide major interval in "
+									<< minor << " subintervals (not divisible)" << std::endl;
+								exit(1);
+							}
+							minor = major / minor;
+						}
+						if ((minor % major) == 0)
+							minor = 0;
+						if (long_options[option_index].name[0] == 's') {
+							generator.setSideScaleInterval(major, minor);
+						}
+						else if (long_options[option_index].name[0] == 'h') {
+							generator.setHeightScaleInterval(major, minor);
+						}
+						else {
+							std::cerr << "Internal error: option " << long_options[option_index].name << " not handled" << std::endl;
+							exit(1);
+						}
+					}
 					break;
 				case 'v':
 					if (optarg && isdigit(optarg[0]) && optarg[1] == '\0') {

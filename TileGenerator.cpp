@@ -152,6 +152,10 @@ TileGenerator::TileGenerator():
 	m_scaleFactor(1),
 	m_sqliteCacheWorldRow(false),
 	m_chunkSize(0),
+	m_sideScaleMajor(0),
+	m_sideScaleMinor(0),
+	m_heightScaleMajor(0),
+	m_heightScaleMinor(0),
 	m_image(0),
 	m_xMin(INT_MAX/16-1),
 	m_xMax(INT_MIN/16+1),
@@ -317,6 +321,18 @@ void TileGenerator::setDrawHeightScale(int scale)
 	if (bits > 1)
 		throw std::runtime_error(std::string("Multiple height scale positions requested"));
 	m_drawScale = (scale & DRAWHEIGHTSCALE_MASK) | (m_drawScale & DRAWSCALE_MASK & ((~scale & DRAWHEIGHTSCALE_MASK) >> 4));
+}
+
+void TileGenerator::setSideScaleInterval(int major, int minor)
+{
+	m_sideScaleMajor = major;
+	m_sideScaleMinor = minor;
+}
+
+void TileGenerator::setHeightScaleInterval(int major, int minor)
+{
+	m_heightScaleMajor = major;
+	m_heightScaleMinor = minor;
 }
 
 void TileGenerator::setDrawAlpha(bool drawAlpha)
@@ -1649,39 +1665,81 @@ void TileGenerator::renderScale()
 {
 	int color = m_scaleColor.to_libgd();
 	if ((m_drawScale & DRAWSCALE_LEFT) && (m_drawScale & DRAWSCALE_TOP)) {
-		gdImageString(m_image, gdFontGetMediumBold(), 24, 0, reinterpret_cast<unsigned char *>(const_cast<char *>("X")), color);
-		gdImageString(m_image, gdFontGetMediumBold(), 2, 24, reinterpret_cast<unsigned char *>(const_cast<char *>("Z")), color);
+		gdImageString(m_image, gdFontGetMediumBold(), borderLeft() - 26, 0, reinterpret_cast<unsigned char *>(const_cast<char *>("X")), color);
+		gdImageString(m_image, gdFontGetMediumBold(), 2, borderTop() - 26, reinterpret_cast<unsigned char *>(const_cast<char *>("Z")), color);
 	}
+	int major = m_sideScaleMajor ? m_sideScaleMajor : 4 * 16 * m_scaleFactor;
+	int minor = m_sideScaleMinor;
 
 	string scaleText;
 
 	if ((m_drawScale & DRAWSCALE_TOP)) {
-		for (int i = (m_xMin / 4) * 4; i <= m_xMax; i += 4 * m_scaleFactor) {
-			stringstream buf1, buf2;
-			buf1 << i * 16;
-			buf2 << "(" << i << ")";
-			int xPos = worldX2ImageX(i * 16);
+		int start;
+		int extra_left = borderLeft() ? 0 : major;
+		int extra_right = borderRight() ? 0 : major;
+		if (m_xMin >= 0)
+			start = (m_xMin * 16 + m_mapXStartNodeOffset - 1 + major - 1 - extra_left) / major * major;
+		else
+			start = (m_xMin * 16 + m_mapXStartNodeOffset - 1 - extra_left) / major * major;
+		for (int i = start; i <= (m_xMax + 1) * 16 + m_mapXEndNodeOffset + extra_right; i += major) {
+			stringstream buf;
+			buf << i;
+			int xPos = worldX2ImageX(i);
 
-			scaleText = buf1.str();
+			scaleText = buf.str();
 			gdImageString(m_image, gdFontGetMediumBold(), xPos + 2, 0, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
-			scaleText = buf2.str();
-			gdImageString(m_image, gdFontGetTiny(), xPos + 2, 16, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
+			if ((major % 16) == 0) {
+				buf.str("");
+				buf << "(" << i / 16 << ")";
+				scaleText = buf.str();
+				gdImageString(m_image, gdFontGetTiny(), xPos + 2, 16, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
+			}
 			gdImageLine(m_image, xPos, 0, xPos, borderTop() - 1, color);
+		}
+		if (minor) {
+			if (m_xMin >= 0)
+				start = (m_xMin * 16 + m_mapXStartNodeOffset + minor - 2) / minor * minor;
+			else
+				start = (m_xMin * 16 + m_mapXStartNodeOffset - 1) / minor * minor;
+			for (int i = start; i <= (m_xMax + 1) * 16 + m_mapXEndNodeOffset; i += minor) {
+				int xPos = worldX2ImageX(i);
+				gdImageLine(m_image, xPos, borderTop() - 5, xPos, borderTop() - 1, color);
+			}
 		}
 	}
 
 	if ((m_drawScale & DRAWSCALE_LEFT)) {
-		for (int i = (m_zMax / 4) * 4; i >= m_zMin; i -= 4 * m_scaleFactor) {
-			stringstream buf1, buf2;
-			buf1 << i * 16;
-			buf2 << "(" << i << ")";
-			int yPos = worldZ2ImageY(i * 16);
+		int start;
+		int extra_top = borderTop() ? 0 : major;
+		int extra_bottom = borderBottom() ? 0 : major;
+		if (m_zMax >= 0)
+			start = ((m_zMax + 1) * 16 - m_mapYStartNodeOffset + extra_top) / major * major;
+		else
+			start = ((m_zMax + 1) * 16 - m_mapYStartNodeOffset - major + 1 + extra_top) / major * major;
+		for (int i = start; i >= m_zMin * 16 - m_mapYEndNodeOffset - 1 - extra_bottom; i -= major) {
+			stringstream buf;
+			buf << i;
+			int yPos = worldZ2ImageY(i);
 
-			scaleText = buf1.str();
+			scaleText = buf.str();
 			gdImageString(m_image, gdFontGetMediumBold(), 2, yPos, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
-			scaleText = buf2.str();
-			gdImageString(m_image, gdFontGetTiny(), 2, yPos-10, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
+			if ((major % 16) == 0) {
+				buf.str("");
+				buf << "(" << i / 16 << ")";
+				scaleText = buf.str();
+				gdImageString(m_image, gdFontGetTiny(), 2, yPos-10, reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), color);
+			}
 			gdImageLine(m_image, 0, yPos, borderLeft() - 1, yPos, color);
+		}
+		if (minor) {
+			if (m_zMax >= 0)
+				start = ((m_zMax + 1) * 16 - m_mapYStartNodeOffset) / minor * minor;
+			else
+				start = ((m_zMax + 1) * 16 - m_mapYStartNodeOffset - minor + 1) / minor * minor;
+			for (int i = start; i >= m_zMin * 16 - m_mapYEndNodeOffset - 1; i -= minor) {
+				int yPos = worldZ2ImageY(i);
+				gdImageLine(m_image, borderLeft() - 5, yPos, borderLeft() - 1, yPos, color);
+			}
 		}
 	}
 
@@ -1700,11 +1758,18 @@ void TileGenerator::renderHeightScale()
 	if (height_step < 1.0 / 16) {
 		height_step = 1.0 / 16;
 	}
-	double number_step = 64;
-	while (number_step / height_step < 48)
-		number_step *= 2;
-	while (number_step / height_step > 96)
-		number_step /= 2;
+	double major;
+	int minor = m_heightScaleMinor;
+	if (m_heightScaleMajor) {
+		major = m_heightScaleMajor;
+	}
+	else {
+		major = 64;
+		while (major / height_step / 64 < 0.75)
+			major *= 2;
+		while (major / height_step / 64 > 1.5)
+			major /= 2;
+	}
 
 	double height = height_min;
 	for (int x = 0; height < height_limit; x++, height += height_step) {
@@ -1712,19 +1777,25 @@ void TileGenerator::renderHeightScale()
 		gdImageLine(m_image, xBorderOffset + x, yBorderOffset + 8, xBorderOffset + x, yBorderOffset + borderBottom() - 20, color.to_libgd());
 
 		int iheight = int(height + (height > 0 ? 0.5 : -0.5));
-		int iheight64 = int(iheight / number_step + (height > 0 ? 0.5 : -0.5)) * number_step;
-		if (fabs(height - iheight64) <= height_step / 2 && (height - iheight64) > -height_step / 2) {
-			if (iheight64 / int(number_step) % 2 == 1 && fabs(height) > 9999 && number_step / height_step < 56) {
+		int iheightMaj = int(iheight / major + (height > 0 ? 0.5 : -0.5)) * major;
+		if (fabs(height - iheightMaj) <= height_step / 2 && (height - iheightMaj) > -height_step / 2) {
+			if (iheightMaj / int(major) % 2 == 1 && fabs(height) > 9999 && major / height_step < 56) {
 				// Maybe not enough room for the number. Draw a tick mark instead
 				gdImageLine(m_image, xBorderOffset + x, yBorderOffset + borderBottom() - 19, xBorderOffset + x, yBorderOffset + borderBottom() - 16, scaleColor);
 			}
 			else {
 				stringstream buf;
-				buf << iheight64;
+				buf << iheightMaj;
 				string scaleText = buf.str();
 				gdImageString(m_image, gdFontGetMediumBold(), xBorderOffset + x + 2, yBorderOffset + borderBottom() - 16,
 					reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), scaleColor);
 				gdImageLine(m_image, xBorderOffset + x, yBorderOffset + borderBottom() - 19, xBorderOffset + x, yBorderOffset + borderBottom() - 1, scaleColor);
+			}
+		}
+		if (minor) {
+			int iheightMin = int(iheight / minor + (height > 0 ? 0.5 : -0.5)) * minor;
+			if (fabs(height - iheightMin) <= height_step / 2 && (height - iheightMin) > -height_step / 2) {
+				gdImageLine(m_image, xBorderOffset + x, yBorderOffset + borderBottom() - 19, xBorderOffset + x, yBorderOffset + borderBottom() - 16, scaleColor);
 			}
 		}
 	}
