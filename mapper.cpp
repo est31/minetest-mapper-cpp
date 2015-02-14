@@ -37,6 +37,7 @@ using namespace std;
 #define OPT_HEIGHTMAPNODESFILE		0x8b
 #define OPT_HEIGHTMAPCOLORSFILE		0x8c
 #define OPT_DRAWHEIGHTSCALE		0x8d
+#define OPT_SCALEFACTOR			0x8e
 
 // Will be replaced with the actual name and location of the executable (if found)
 string executableName = "minetestmapper";
@@ -116,6 +117,7 @@ void usage()
 			"  --tiles <tilesize>[+<border>]|block|chunk\n"
 			"  --tileorigin <x>,<y>|world|map\n"
 			"  --tilecenter <x>,<y>|world|map\n"
+			"  --scalefactor 1:<n>\n"
 			"  --chunksize <size>\n"
 			"  --verbose[=n]\n"
 			"  --verbose-search-colors[=n]\n"
@@ -582,6 +584,7 @@ int main(int argc, char *argv[])
 		{"tileorigin", required_argument, 0, 'T'},
 		{"tilecenter", required_argument, 0, 'T'},
 		{"tilebordercolor", required_argument, 0, 'B'},
+		{"scalefactor", required_argument, 0, OPT_SCALEFACTOR},
 		{"chunksize", required_argument, 0, OPT_CHUNKSIZE},
 		{"verbose", optional_argument, 0, 'v'},
 		{"verbose-search-colors", optional_argument, 0, OPT_VERBOSE_SEARCH_COLORS},
@@ -810,6 +813,32 @@ int main(int argc, char *argv[])
 							exit(1);
 						}
 						generator.setChunkSize(size);
+					}
+					break;
+				case OPT_SCALEFACTOR: {
+						istringstream arg;
+						arg.str(optarg);
+						int one;
+						char colon;
+						int factor = 1;
+						arg >> one >> std::ws;
+						if (arg.fail() || one != 1) {
+							std::cerr << "Invalid scale factor specification (" << optarg << ") - expected: 1:<n>" << std::endl;
+							exit(1);
+						}
+						if (!arg.eof()) {
+							arg >> colon >> factor >> std::ws;
+							if (arg.fail() || colon != ':' || factor<0 || !arg.eof()) {
+								std::cerr << "Invalid scale factor specification (" << optarg << ") - expected: 1:<n>" << std::endl;
+								usage();
+								exit(1);
+							}
+							if (factor != 1 && factor != 2 && factor != 4 && factor != 8 && factor != 16) {
+								std::cerr << "Scale factor must be 1:1, 1:2, 1:4, 1:8 or 1:16" << std::endl;
+								exit(1);
+							}
+						}
+						generator.setScaleFactor(factor);
 					}
 					break;
 				case 't': {

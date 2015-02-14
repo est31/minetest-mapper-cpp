@@ -26,7 +26,7 @@ PixelAttributes::~PixelAttributes()
 	freeAttributes();
 }
 
-void PixelAttributes::setParameters(int width, int lines, int nextY)
+void PixelAttributes::setParameters(int width, int lines, int nextY, int scale, bool defaultEmpty)
 {
 	freeAttributes();
 	m_width = width + 1; // 1px gradient calculation
@@ -39,6 +39,7 @@ void PixelAttributes::setParameters(int width, int lines, int nextY)
 	m_nextY = nextY;
 	m_lastY = -1;
 	m_firstUnshadedY = 0;
+	m_scale = scale;
 
 	m_pixelAttributes = new PixelAttribute *[m_lineCount];
 	if (!m_pixelAttributes)
@@ -52,7 +53,10 @@ void PixelAttributes::setParameters(int width, int lines, int nextY)
 	for (int i=0; i<m_lineCount; i++)
 		for (int j=0; j<m_width; j++) {
 			m_pixelAttributes[i][j].m_a=0;
-			m_pixelAttributes[i][j].next16Empty = (j - 1) % 16 == 0;
+			if (defaultEmpty)
+				m_pixelAttributes[i][j].nextEmpty = (j - 1) % (16 / scale) == 0;
+			else
+				m_pixelAttributes[i][j].nextEmpty = false;
 		}
 }
 
@@ -108,13 +112,13 @@ static inline double colorSafeBounds(double color)
 }
 
 
-void PixelAttributes::renderShading(bool drawAlpha)
+void PixelAttributes::renderShading(double emphasis, bool drawAlpha)
 {
 	int y;
 	for (y = yCoord2Line(m_firstUnshadedY); y <= yCoord2Line(m_lastY); y++) {
 		for (int x = 1; x < m_width; x++) {
-			if (m_pixelAttributes[y][x].next16Empty) {
-				x += 15;
+			if (m_pixelAttributes[y][x].nextEmpty) {
+				x += 16 / m_scale - 1;
 				continue;
 			}
 			if (!m_pixelAttributes[y][x].isNormalized())
@@ -136,7 +140,7 @@ void PixelAttributes::renderShading(bool drawAlpha)
 			if (d > 3) {
 				d = 3;
 			}
-			d = d * 12 / 255;
+			d = d * 12 / 255 * emphasis;
 			#define pixel (m_pixelAttributes[y][x])
 			//PixelAttribute &pixel = m_pixelAttributes[y][x];
 			if (drawAlpha)

@@ -138,6 +138,7 @@ public:
 	void setTileSize(int width, int heigth);
 	void setTileOrigin(int x, int y);
 	void setTileCenter(int x, int y);
+	void setScaleFactor(int f);
 	void enableProgressIndicator(void);
 	void parseNodeColorsFile(const std::string &fileName);
 	void parseHeightMapNodesFile(const std::string &fileName);
@@ -151,6 +152,7 @@ private:
 	std::string getWorldDatabaseBackend(const std::string &input);
 	int getMapChunkSize(const std::string &input);
 	void openDb(const std::string &input);
+	void sanitizeParameters(void);
 	void loadBlocks();
 	void createImage();
 	void computeMapParameters(const std::string &input);
@@ -162,8 +164,6 @@ private:
 		int mapEndNodeOffset,
 		int tileOrigin,
 		int tileSize,
-		// Input / Output parameters
-		int &pictSize,
 		// Output parameters
 		int &tileBorderCount,
 		int &tileMapOffset,
@@ -172,7 +172,8 @@ private:
 		bool ascending);
 	void renderMap();
 	std::list<int> getZValueList() const;
-	void pushPixelRows(int zPosLimit);
+	void pushPixelRows(PixelAttributes &pixelAttributes, int zPosLimit);
+	void scalePixelRows(PixelAttributes &pixelAttributes, PixelAttributes &pixelAttributesScaled, int zPosLimit);
 	void processMapBlock(const DB::Block &block);
 	void renderMapBlock(const ustring &mapBlock, const BlockPos &pos, int version);
 	void renderScale();
@@ -231,12 +232,14 @@ private:
 	std::string m_backend;
 	bool m_shrinkGeometry;
 	bool m_blockGeometry;
+	int m_scaleFactor;
 	bool m_sqliteCacheWorldRow;
 	int m_chunkSize;
 
 	DB *m_db;
 	gdImagePtr m_image;
 	PixelAttributes m_blockPixelAttributes;
+	PixelAttributes m_blockPixelAttributesScaled;
 	int m_xMin;
 	int m_xMax;
 	int m_zMin;
@@ -257,6 +260,10 @@ private:
 	int m_mapYStartNodeOffset;
 	int m_mapXEndNodeOffset;
 	int m_mapYEndNodeOffset;
+	int m_mapXStartNodeOffsetOrig;
+	int m_mapYStartNodeOffsetOrig;
+	int m_mapXEndNodeOffsetOrig;
+	int m_mapYEndNodeOffsetOrig;
 	int m_tileXOrigin;
 	int m_tileZOrigin;
 	int m_tileXCentered;
