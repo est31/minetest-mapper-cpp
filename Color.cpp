@@ -2,16 +2,60 @@
 #include <cctype>
 #include <stdexcept>
 #include <cstdlib>
+#include <map>
+#include <string>
+#include <cctype>
 #include "Color.h"
+
+class ColorTable : public std::map<std::string, Color>
+{
+public:
+	ColorTable(void)
+	{
+	map<std::string, Color> &table = *this;
+	table["white"] =	Color(0xff, 0xff, 0xff);
+	table["black"] =	Color(0, 0, 0);
+	table["gray"] =		Color(0x7f, 0x7f, 0x7f);
+	table["grey"] =		Color(0x7f, 0x7f, 0x7f);
+
+	table["red"] =		Color(0xff, 0, 0);
+	table["green"] =	Color(0, 0xff, 0);
+	table["blue"] =		Color(0, 0, 0xff);
+
+	table["yellow"] =	Color(0xff, 0xff, 0);
+	table["magenta"] =	Color(0xff, 0, 0xff);
+	table["fuchsia"] =	Color(0xff, 0, 0xff);
+	table["cyan"] =		Color(0, 0xff, 0xff);
+	table["aqua"] =		Color(0, 0xff, 0xff);
+
+	table["orange"] =	Color(0xff, 0x7f, 0);
+	table["chartreuse"] =	Color(0x7f, 0xff, 0);
+	table["pink"] =		Color(0xff, 0, 0x7f);
+	table["violet"] =	Color(0x7f, 0, 0xff);
+	table["springgreen"] =	Color(0, 0xff, 0x7f);
+	table["azure"] =	Color(0, 0x7f, 0xff);
+
+	table["brown"] =	Color(0x7f, 0x3f, 0);
+	}
+};
+ColorTable colorTable;
+
 
 // alpha:
 //	 0: don't expect/allow alpha
 //	 1: allow alpha; defaults to 255 (0xff)
 //	-1: allow alpha but ignore - set to to 255 (0xff)
-Color::Color(const std::string &color, int alpha)
+Color::Color(std::string color, int alpha)
 {
 	if (color[0] != '#') {
-		throw std::runtime_error("Color does not begin with #");
+		int l = color.length();
+		for (int i = 0; i < l; i++)
+			color[i] = tolower(color[i]);
+		if (colorTable.count(color) > 0) {
+			*this = colorTable[color];
+			return;
+		}
+		throw std::runtime_error(std::string("Symbolic color '") + color + "' not known, or color does not begin with #");
 	}
 	if (std::string::npos != color.find_first_not_of("0123456789abcdefABCDEF",1)) {
 		throw std::runtime_error("Color value has invalid digits (expected: [0-9a-zA-Z])");
