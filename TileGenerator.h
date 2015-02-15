@@ -23,7 +23,8 @@
 #include <list>
 #include <stdint.h>
 #include <string>
-#include <string>
+#include <iostream>
+#include <sstream>
 #include "types.h"
 #include "PixelAttributes.h"
 #include "BlockPos.h"
@@ -51,10 +52,10 @@ class TileGenerator
 {
 private:
 #if __cplusplus >= 201103L
-	typedef std::unordered_map<std::string, ColorEntry> ColorMap;
+	typedef std::unordered_map<std::string, ColorEntry> NodeColorMap;
 	typedef std::unordered_map<int, std::string> NodeID2NameMap;
 #else
-	typedef std::map<std::string, ColorEntry> ColorMap;
+	typedef std::map<std::string, ColorEntry> NodeColorMap;
 	typedef std::map<int, std::string> NodeID2NameMap;
 #endif
 public:
@@ -64,6 +65,7 @@ public:
 		int height[2];
 		Color color[2];
 	};
+	typedef std::list<HeightMapColor> HeightMapColorList;
 	struct DrawObject {
 		void setCenter(const NodeCoord &c) { haveCenter = true; center = c; }
 		void setCorner1(const NodeCoord &c) { haveCenter = false; corner1 = c; }
@@ -101,7 +103,7 @@ public:
 
 	TileGenerator();
 	~TileGenerator();
-	void setHeightMap(bool enable, bool grey);
+	void setHeightMap(bool enable);
 	void setHeightMapYScale(float scale);
 	void setSeaLevel(int level);
 	void setBgColor(const Color &bgColor);
@@ -109,6 +111,7 @@ public:
 	void setScaleColor(const Color &scaleColor);
 	void setOriginColor(const Color &originColor);
 	void setPlayerColor(const Color &playerColor);
+	void setHeightMapColor(const Color &color0, const Color &color1);
 	Color parseColor(const Color &color);
 	void setDrawOrigin(bool drawOrigin);
 	void setDrawPlayers(bool drawPlayers);
@@ -129,13 +132,14 @@ public:
 	void setTileOrigin(int x, int y);
 	void setTileCenter(int x, int y);
 	void enableProgressIndicator(void);
-	void parseColorsFile(const std::string &fileName, int depth = 0);
+	void parseNodeColorsFile(const std::string &fileName);
+	void parseHeightMapNodesFile(const std::string &fileName);
+	void parseHeightMapColorsFile(const std::string &fileName);
 	void setBackend(std::string backend);
 	void setChunkSize(int size);
 	void generate(const std::string &input, const std::string &output);
 
 private:
-	void parseColorsStream(std::istream &in, const std::string &filename, int depth);
 	std::string getWorldDatabaseBackend(const std::string &input);
 	int getMapChunkSize(const std::string &input);
 	void openDb(const std::string &input);
@@ -143,21 +147,21 @@ private:
 	void createImage();
 	void computeMapParameters(const std::string &input);
 	void computeTileParameters(
-                // Input parameters
-                int minPos,
-                int maxPos,
-                int mapStartNodeOffset,
-                int mapEndNodeOffset,
-                int tileOrigin,
-                int tileSize,
-                // Input / Output parameters
-                int &pictSize,
-                // Output parameters
-                int &tileBorderCount,
-                int &tileMapOffset,
-                int &tileMapExcess,
-                // Behavior selection
-                bool ascending);
+		// Input parameters
+		int minPos,
+		int maxPos,
+		int mapStartNodeOffset,
+		int mapEndNodeOffset,
+		int tileOrigin,
+		int tileSize,
+		// Input / Output parameters
+		int &pictSize,
+		// Output parameters
+		int &tileBorderCount,
+		int &tileMapOffset,
+		int &tileMapExcess,
+		// Behavior selection
+		bool ascending);
 	void renderMap();
 	std::list<int> getZValueList() const;
 	void pushPixelRows(int zPosLimit);
@@ -180,6 +184,19 @@ private:
 	int borderLeft() const { return ((m_drawScale & DRAWSCALE_LEFT) ? SCALESIZE_VERT : 0); }
 	int borderRight() const { return ((m_drawScale & DRAWSCALE_RIGHT) ? SCALESIZE_VERT : 0); }
 
+	void parseDataFile(const std::string &fileName, int depth, const char *type,
+		void (TileGenerator::*parseLine)(const std::string &line, std::string name,
+			std::istringstream &iline, int linenr, const std::string &filename));
+	void parseDataStream(std::istream &in, const std::string &filename, int depth, const char *type,
+		void (TileGenerator::*parseLine)(const std::string &line, std::string name,
+			std::istringstream &iline, int linenr, const std::string &filename));
+	void parseNodeColorsLine(const std::string &line, std::string name, std::istringstream &iline,
+		int linenr, const std::string &filename);
+	void parseHeightMapNodesLine(const std::string &line, std::string name, std::istringstream &iline,
+		int linenr, const std::string &filename);
+	void parseHeightMapColorsLine(const std::string &line, std::string name, std::istringstream &iline,
+		int linenr, const std::string &filename);
+
 public:
 	int verboseCoordinates;
 	int verboseReadColors;
@@ -188,10 +205,8 @@ public:
 
 private:
 	bool m_heightMap;
-	bool m_heightMapGrey;
 	float m_heightMapYScale;
 	int m_seaLevel;
-	std::list<HeightMapColor> m_heightMapColors;
 	Color m_bgColor;
 	Color m_blockDefaultColor;
 	Color m_scaleColor;
@@ -250,7 +265,8 @@ private:
 	NodeID2NameMap m_nameMap;
 	static const ColorEntry *NodeColorNotDrawn;
 	const ColorEntry *m_nodeIDColor[MAPBLOCK_MAXCOLORS];
-	ColorMap m_colors;
+	NodeColorMap m_nodeColors;
+	HeightMapColorList m_heightMapColors;
 	uint16_t m_readedPixels[16];
 	std::set<std::string> m_unknownNodes;
 	std::vector<DrawObject> m_drawObjects;

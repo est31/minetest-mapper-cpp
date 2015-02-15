@@ -133,7 +133,6 @@ TileGenerator::TileGenerator():
 	verboseStatistics(false),
 	progressIndicator(false),
 	m_heightMap(false),
-	m_heightMapGrey(false),
 	m_heightMapYScale(1),
 	m_seaLevel(0),
 	m_bgColor(255, 255, 255),
@@ -180,39 +179,19 @@ TileGenerator::TileGenerator():
 	m_tileMapXOffset(0),
 	m_tileMapYOffset(0)
 {
+	// Load default grey colors.
+	m_heightMapColors.push_back(HeightMapColor(INT_MIN, Color(0,0,0), -129, Color(0,0,0)));
+	m_heightMapColors.push_back(HeightMapColor(-128, Color(0,0,0), 127, Color(255,255,255)));
+	m_heightMapColors.push_back(HeightMapColor(128, Color(255,255,255), INT_MAX, Color(255,255,255)));
 }
 
 TileGenerator::~TileGenerator()
 {
 }
 
-void TileGenerator::setHeightMap(bool enable, bool grey)
+void TileGenerator::setHeightMap(bool enable)
 {
 	m_heightMap = enable;
-	m_heightMapGrey = grey;
-	m_heightMapColors.clear();
-	if (m_heightMapGrey) {
-		m_heightMapColors.push_back(HeightMapColor(INT_MIN, Color(0,0,0), -1, Color(0,0,0)));
-		m_heightMapColors.push_back(HeightMapColor(0, Color(0,0,0), 255, Color(255,255,255)));
-		m_heightMapColors.push_back(HeightMapColor(256, Color(255,255,255), INT_MAX, Color(255,255,255)));
-	}
-	else {
-		m_heightMapColors.push_back(HeightMapColor(INT_MIN, Color(4,4,4), -60, Color(4,4,4)));
-		m_heightMapColors.push_back(HeightMapColor(-60, Color(4,4,4), -45, Color(16,16,16)));
-		m_heightMapColors.push_back(HeightMapColor(-45, Color(16,16,16), -30, Color(16,32,64)));
-		m_heightMapColors.push_back(HeightMapColor(-30, Color(16,32,64), 0, Color(32,64,255)));
-
-		m_heightMapColors.push_back(HeightMapColor(1, Color(32,128,32), 10, Color(64,192,64)));		// Green
-		m_heightMapColors.push_back(HeightMapColor(10, Color(64,192,64), 20, Color(192,192,64)));	// Green -> Yellow
-		m_heightMapColors.push_back(HeightMapColor(20, Color(192,192,64), 40, Color(128,128,64)));	// Yellow
-		m_heightMapColors.push_back(HeightMapColor(40, Color(128,128,64), 50, Color(128,64,64)));	// Yellow -> Red
-		m_heightMapColors.push_back(HeightMapColor(50, Color(128,64,64), 70, Color(64,32,32)));		// Red
-		m_heightMapColors.push_back(HeightMapColor(70, Color(64,32,32), 80, Color(48,48,48)));		// Red -> Grey
-		m_heightMapColors.push_back(HeightMapColor(80, Color(48,48,48), 140, Color(96,96,96)));		// Grey
-		// Above 100, white suggests snowy :-)
-		m_heightMapColors.push_back(HeightMapColor(141, Color(160,160,160), 250, Color(250,250,250)));	// Grey -> White
-		m_heightMapColors.push_back(HeightMapColor(250, Color(250,250,250), INT_MAX, Color(250,250,250)));
-	}
 }
 
 void TileGenerator::setHeightMapYScale(float scale)
@@ -265,6 +244,14 @@ void TileGenerator::setOriginColor(const Color &originColor)
 void TileGenerator::setPlayerColor(const Color &playerColor)
 {
 	m_playerColor = playerColor;
+}
+
+void TileGenerator::setHeightMapColor(const Color &color0, const Color &color1)
+{
+	m_heightMapColors.clear();
+	m_heightMapColors.push_back(HeightMapColor(INT_MIN, color0, -129, color0));
+	m_heightMapColors.push_back(HeightMapColor(-128, color0, 127, color1));
+	m_heightMapColors.push_back(HeightMapColor(128, color1, INT_MAX, color1));
 }
 
 void TileGenerator::setTileBorderColor(const Color &tileBorderColor)
@@ -389,21 +376,41 @@ void TileGenerator::setMaxY(int y)
 	m_reqYMaxNode = y - 16 * m_reqYMax;
 }
 
-void TileGenerator::parseColorsFile(const std::string &fileName, int depth)
+void TileGenerator::parseNodeColorsFile(const std::string &fileName)
+{
+	m_nodeColors.clear();
+	parseDataFile(fileName, 0, "map colors", &TileGenerator::parseNodeColorsLine);
+}
+
+void TileGenerator::parseHeightMapNodesFile(const std::string &fileName)
+{
+	m_nodeColors.clear();
+	parseDataFile(fileName, 0, "heightmap nodes", &TileGenerator::parseHeightMapNodesLine);
+}
+
+void TileGenerator::parseHeightMapColorsFile(const std::string &fileName)
+{
+	m_heightMapColors.clear();
+	parseDataFile(fileName, 0, "heightmap colors", &TileGenerator::parseHeightMapColorsLine);
+}
+
+void TileGenerator::parseDataFile(const std::string &fileName, int depth, const char *type,
+	void (TileGenerator::*parseLine)(const std::string &line, std::string name,
+		istringstream &iline, int linenr, const std::string &filename))
 {
 	if (depth > 100)
-		throw std::runtime_error(std::string("Excessive inclusion depth of colors files - suspected recursion (i.e. cycle); current file: '") + fileName + "'");
+		throw std::runtime_error(std::string("Excessive inclusion depth of ") + type + " files - suspected recursion (i.e. cycle); current file: '" + fileName + "'");
 	if (depth == 0 && verboseReadColors >= 2)
-		cout << "Checking for colors file: " << fileName << std::endl;
+		cout << "Checking for " << type << " file: " << fileName << std::endl;
 	ifstream in;
 	in.open(fileName.c_str(), ifstream::in);
 	if (!in.is_open()) {
-		throw std::runtime_error(std::string("Failed to open colors file '") + fileName + "'");
+		throw std::runtime_error(std::string("Failed to open ") + type + " file '" + fileName + "'");
 		return;
 	}
 	if (verboseReadColors >= 1)
-		cout << "Reading colors file:  " << fileName << std::endl;
-	parseColorsStream(in, fileName.c_str(), depth);
+		cout << "Reading " << type << " file:  " << fileName << std::endl;
+	parseDataStream(in, fileName, depth, type, parseLine);
 	in.close();
 }
 
@@ -449,7 +456,9 @@ void TileGenerator::generate(const std::string &input, const std::string &output
 	printUnknown();
 }
 
-void TileGenerator::parseColorsStream(std::istream &in, const std::string &filename, int depth)
+void TileGenerator::parseDataStream(std::istream &in, const std::string &filename, int depth, const char *type,
+	void (TileGenerator::*parseLine)(const std::string &line, std::string name,
+		istringstream &iline, int linenr, const std::string &filename))
 {
 	string line;
 	int linenr = 0;
@@ -462,7 +471,6 @@ void TileGenerator::parseColorsStream(std::istream &in, const std::string &filen
 		iline.str(line);
 		iline >> std::skipws;
 		string name;
-		ColorEntry color;
 		iline >> name >> std::ws;
 		if (name.length() == 0)
 			continue;
@@ -487,58 +495,136 @@ void TileGenerator::parseColorsStream(std::istream &in, const std::string &filen
 				}
 			}
 #endif
-			parseColorsFile(includeFile, depth + 1);
-		}
-		else if (iline.good() && iline.peek() == '-') {
-			char c;
-			iline >> c >> std::ws;
-			if (iline.bad() || !iline.eof()) {
-				std::cerr << filename << ":" << linenr << ": bad line in colors file (" << line << ")" << std::endl;
-				continue;
-			}
-			m_colors.erase(name);
+			parseDataFile(includeFile, depth + 1, type, parseLine);
 		}
 		else {
-			int r, g, b, a, t;
-			iline >> r;
-			iline >> g;
-			iline >> b;
-			if (iline.fail()) {
-				std::cerr << filename << ":" << linenr << ": bad line in colors file (" << line << ")" << std::endl;
-				continue;
-			}
-			a = 0xff;
-			iline >> a;
-			t = 0;
-			iline >> t;
-			color = ColorEntry(r,g,b,a,t);
-			if ((m_drawAlpha && a == 0xff) || (!m_drawAlpha && a != 0xff)) {
-				// If drawing alpha, and the colors file contains both
-				// an opaque entry and a non-opaque entry for a name, prefer
-				// the non-opaque entry
-				// If not drawing alpha, and the colors file contains both
-				// an opaque entry and a non-opaque entry for a name, prefer
-				// the opaque entry
-				// Otherwise, any later entry overrides any previous entry
-				ColorMap::iterator it = m_colors.find(name);
-				if (it != m_colors.end()) {
-					if (m_drawAlpha && (a == 0xff && it->second.a != 0xff)) {
-						// drawing alpha: don't use opaque color to override
-						// non-opaque color
-						continue;
-					}
-					if (!m_drawAlpha && (a != 0xff && it->second.a == 0xff)) {
-						// not drawing alpha: don't use non-opaque color to
-						// override opaque color
-						continue;
-					}
-				}
-			}
-			m_colors[name] = color;
+			(this->*parseLine)(line, name, iline, linenr, filename);
 		}
 	}
 	if (!in.eof()) {
 		std::cerr << filename << ": error reading colors file after line " << linenr << std::endl;
+	}
+}
+
+void TileGenerator::parseNodeColorsLine(const std::string &line, std::string name, istringstream &iline, int linenr, const std::string &filename)
+{
+	if (iline.good() && iline.peek() == '-') {
+		char c;
+		iline >> c >> std::ws;
+		if (iline.bad() || !iline.eof()) {
+			std::cerr << filename << ":" << linenr << ": bad line in colors file (" << line << ")" << std::endl;
+			return;
+		}
+		m_nodeColors.erase(name);
+	}
+	else {
+		int r, g, b, a, t;
+		ColorEntry color;
+		iline >> r;
+		iline >> g;
+		iline >> b;
+		if (iline.fail()) {
+			std::cerr << filename << ":" << linenr << ": bad line in colors file (" << line << ")" << std::endl;
+			return;
+		}
+		a = 0xff;
+		iline >> a;
+		t = 0;
+		iline >> t;
+		color = ColorEntry(r,g,b,a,t);
+		if ((m_drawAlpha && a == 0xff) || (!m_drawAlpha && a != 0xff)) {
+			// If drawing alpha, and the colors file contains both
+			// an opaque entry and a non-opaque entry for a name, prefer
+			// the non-opaque entry
+			// If not drawing alpha, and the colors file contains both
+			// an opaque entry and a non-opaque entry for a name, prefer
+			// the opaque entry
+			// Otherwise, any later entry overrides any previous entry
+			NodeColorMap::iterator it = m_nodeColors.find(name);
+			if (it != m_nodeColors.end()) {
+				if (m_drawAlpha && (a == 0xff && it->second.a != 0xff)) {
+					// drawing alpha: don't use opaque color to override
+					// non-opaque color
+					return;
+				}
+				if (!m_drawAlpha && (a != 0xff && it->second.a == 0xff)) {
+					// not drawing alpha: don't use non-opaque color to
+					// override opaque color
+					return;
+				}
+			}
+		}
+		m_nodeColors[name] = color;
+	}
+}
+
+void TileGenerator::parseHeightMapColorsLine(const std::string &line, std::string name, istringstream &iline, int linenr, const std::string &filename)
+{
+	(void) name;
+	int height[2];
+	Color color[2];
+	iline.str(line);		// Reset
+	for (int i = 0; i < 2; i++) {
+		iline >> std::ws;
+		char c = iline.peek();
+		iline >> height[i];
+		if (iline.fail()) {
+			std::string value;
+			iline.clear();
+			iline >> std::ws;
+			iline >> value >> std::ws;
+			if (iline.good()) {
+				if (value == "-oo" || (c == '-' && value=="oo"))
+					height[i] = INT_MIN;
+				else if (value == "oo" || value == "+oo")
+					height[i] = INT_MAX;
+				else {
+					iline.clear(ios::failbit);	// Set to failed
+					break;
+				}
+			}
+		}
+	}
+	for (int i = 0; i < 2; i++) {
+		int r, g, b;
+		iline >> r;
+		iline >> g;
+		iline >> b;
+		color[i] = Color(r,g,b);
+	}
+	if (height[0] > height[1]) {
+		{
+			int tmp = height[0];
+			height[0] = height[1];
+			height[1] = tmp;
+		}
+		{
+			Color tmp = color[0];
+			color[0] = color[1];
+			color[1] = tmp;
+		}
+	}
+	iline >> std::ws;
+	if (iline.fail() || !iline.eof()) {
+		std::cerr << filename << ":" << linenr << ": bad line in heightmap colors file (" << line << ")" << std::endl;
+		return;
+	}
+	m_heightMapColors.push_back(HeightMapColor(height[0], color[0], height[1], color[1]));
+}
+
+void TileGenerator::parseHeightMapNodesLine(const std::string &line, std::string name, istringstream &iline, int linenr, const std::string &filename)
+{
+	if (name == "-") {
+		iline >> std::ws >> name >> std::ws;
+		m_nodeColors.erase(name);
+	}
+	else {
+		m_nodeColors[name] = ColorEntry(0,0,0,255,1);		// Dummy entry - but must not be transparent
+	}
+	// Don't care if not at eof (== really eol). We might be reading a colors.txt file...
+	if (iline.bad()) {
+		std::cerr << filename << ":" << linenr << ": bad line in heightmap nodes file (" << line << ")" << std::endl;
+		return;
 	}
 }
 
@@ -1201,15 +1287,16 @@ void TileGenerator::processMapBlock(const DB::Block &block)
 			size_t end = name.find_first_of('\0');
 			if (end != std::string::npos)
 				name.erase(end);
-			ColorMap::const_iterator color = m_colors.find(name);
-			if (name == "air" && !(m_drawAir && color != m_colors.end())) {
+			// In case of a height map, it stores just dummy colors...
+			NodeColorMap::const_iterator color = m_nodeColors.find(name);
+			if (name == "air" && !(m_drawAir && color != m_nodeColors.end())) {
 				m_nodeIDColor[nodeId] = NodeColorNotDrawn;
 			}
 			else if (name == "ignore") {
 				m_nodeIDColor[nodeId] = NodeColorNotDrawn;
 			}
 			else {
-				if (color != m_colors.end()) {
+				if (color != m_nodeColors.end()) {
 					m_nodeIDColor[nodeId] = &color->second;
 				}
 				else {
@@ -1306,7 +1393,7 @@ void TileGenerator::renderMap()
 		cout << "Statistics"
 		     << ":  blocks read: " << m_db->getBlocksReadCount()
 		     << "  (" << m_db->getBlocksCachedCount() << " cached + "
-		               << m_db->getBlocksUnCachedCount() << " uncached)"
+			       << m_db->getBlocksUnCachedCount() << " uncached)"
 		     << ";  blocks rendered: " << blocks_rendered
 		     << ";  area rendered: " << area_rendered
 		     << "/" << (m_xMax-m_xMin+1) * (m_zMax-m_zMin+1)
@@ -1357,7 +1444,7 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 						float g = 0;
 						float b = 0;
 						int n = 0;
-						for (std::list<HeightMapColor>::iterator i = m_heightMapColors.begin(); i != m_heightMapColors.end(); i++) {
+						for (HeightMapColorList::iterator i = m_heightMapColors.begin(); i != m_heightMapColors.end(); i++) {
 							HeightMapColor &colorSpec = *i;
 							if (adjustedHeight >= colorSpec.height[0] && adjustedHeight <= colorSpec.height[1]) {
 								float weight = (float) (colorSpec.height[1] - adjustedHeight + 1) / (colorSpec.height[1] - colorSpec.height[0] + 1);

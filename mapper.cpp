@@ -32,15 +32,17 @@ using namespace std;
 #define OPT_VERBOSE_SEARCH_COLORS	0x86
 #define OPT_CHUNKSIZE			0x87
 #define OPT_HEIGHTMAP			0x88
-#define OPT_HEIGHTMAPGREY		0x89
-#define OPT_HEIGHTMAPYSCALE		0x8a
-#define OPT_HEIGHT_LEVEL0		0x8b
-
+#define OPT_HEIGHTMAPYSCALE		0x89
+#define OPT_HEIGHT_LEVEL0		0x8a
+#define OPT_HEIGHTMAPNODESFILE		0x8b
+#define OPT_HEIGHTMAPCOLORSFILE		0x8c
 
 // Will be replaced with the actual name and location of the executable (if found)
 string executableName = "minetestmapper";
 string installPrefix = INSTALL_PREFIX;
-string colorsDefaultName = "colors.txt";
+string nodeColorsDefaultFile = "colors.txt";
+string heightMapNodesDefaultFile = "heightmap-nodes.txt";
+string heightMapColorsDefaultFile = "heightmap-colors.txt";
 
 class FuzzyBool {
 private:
@@ -71,9 +73,11 @@ void usage()
 			"  -i/--input <world_path>\n"
 			"  -o/--output <output_image.png>\n"
 			"  --colors <file>\n"
-			"  --heightmap[-grey]\n"
-			"  --heightmap-scale <scale>\n"
+			"  --heightmap-nodes <file>\n"
+			"  --heightmap-colors[=<file>]\n"
 			"  --height-level-0 <level>\n"
+			"  --heightmap[=<color>]\n"
+			"  --heightmap-yscale <scale>\n"
 			"  --bgcolor <color>\n"
 			"  --blockcolor <color>\n"
 			"  --scalecolor <color>\n"
@@ -139,9 +143,11 @@ void usage()
 	std::cout << executableName << ' ' << options_text;
 }
 
-void parseColorsFile(TileGenerator &generator, const string &input, string colorsFile) {
-	if (!colorsFile.empty()) {
-		generator.parseColorsFile(colorsFile);
+void parseDataFile(TileGenerator &generator, const string &input, string dataFile, string defaultFile,
+	void (TileGenerator::*parseFile)(const std::string &fileName))
+{
+	if (!dataFile.empty()) {
+		(generator.*parseFile)(dataFile);
 		return;
 	}
 
@@ -170,17 +176,17 @@ void parseColorsFile(TileGenerator &generator, const string &input, string color
 	}
 	colorPaths.push_back("");
 
-	std::vector<std::string> colorFileNames;
-	colorFileNames.push_back(colorsDefaultName);
+	std::vector<std::string> fileNames;
+	fileNames.push_back(defaultFile);
 
 	for (std::vector<std::string>::iterator path = colorPaths.begin(); path != colorPaths.end(); path++) {
-		for (std::vector<std::string>::iterator name = colorFileNames.begin(); name != colorFileNames.end(); name++) {
+		for (std::vector<std::string>::iterator name = fileNames.begin(); name != fileNames.end(); name++) {
 			if (path->empty())
-				colorsFile = *name;
+				dataFile = *name;
 			else
-				colorsFile = *path + PATH_SEPARATOR +  *name;
+				dataFile = *path + PATH_SEPARATOR +  *name;
 			try {
-				generator.parseColorsFile(colorsFile);
+				(generator.*parseFile)(dataFile);
 				if (path->empty()) {
 					// I hope this is not obnoxious to windows users ?
 					cerr	<< "Warning: Using " << *name << " in current directory as a last resort." << std::endl
@@ -199,7 +205,9 @@ void parseColorsFile(TileGenerator &generator, const string &input, string color
 
 		}
 	}
-	throw std::runtime_error("Failed to find or failed to open a colors.txt file.");
+	ostringstream oss;
+	oss << "Failed to find or failed to open a " << defaultFile << " file.";
+	throw std::runtime_error(oss.str().c_str());
 }
 
 // is: stream to read from
@@ -530,10 +538,10 @@ int main(int argc, char *argv[])
 		{"input", required_argument, 0, 'i'},
 		{"output", required_argument, 0, 'o'},
 		{"colors", required_argument, 0, 'C'},
-		{"heightmap", no_argument, 0, OPT_HEIGHTMAP},
-		{"heightmap-grey", no_argument, 0, OPT_HEIGHTMAPGREY},
-		{"heightmap-gray", no_argument, 0, OPT_HEIGHTMAPGREY},
-		{"heightmap-scale", required_argument, 0, OPT_HEIGHTMAPYSCALE},
+		{"heightmap-nodes", required_argument, 0, OPT_HEIGHTMAPNODESFILE},
+		{"heightmap-colors", required_argument, 0, OPT_HEIGHTMAPCOLORSFILE},
+		{"heightmap", optional_argument, 0, OPT_HEIGHTMAP},
+		{"heightmap-yscale", required_argument, 0, OPT_HEIGHTMAPYSCALE},
 		{"height-level-0", required_argument, 0, OPT_HEIGHT_LEVEL0},
 		{"bgcolor", required_argument, 0, 'b'},
 		{"blockcolor", required_argument, 0, OPT_BLOCKCOLOR},
@@ -580,7 +588,11 @@ int main(int argc, char *argv[])
 
 	string input;
 	string output;
-	string colorsFile;
+	bool heightMap = false;
+	bool loadHeightMapColorsFile = false;
+	string nodeColorsFile;
+	string heightMapColorsFile;
+	string heightMapNodesFile;
 	bool foundGeometrySpec = false;
 	bool setFixedOrShrinkGeometry = false;
 
@@ -614,16 +626,39 @@ int main(int argc, char *argv[])
 					output = optarg;
 					break;
 				case 'C':
-					colorsFile = optarg;
+					nodeColorsFile = optarg;
+					break;
+				case OPT_HEIGHTMAPNODESFILE:
+					heightMapNodesFile = optarg;
+					break;
+				case OPT_HEIGHTMAPCOLORSFILE:
+					heightMapColorsFile = optarg;
 					break;
 				case 'b':
 					generator.setBgColor(Color(optarg, 0));
 					break;
 				case OPT_HEIGHTMAP:
-					generator.setHeightMap(true, false);
-					break;
-				case OPT_HEIGHTMAPGREY:
-					generator.setHeightMap(true, true);
+					generator.setHeightMap(true);
+					heightMap = true;
+					if (optarg && *optarg) {
+						loadHeightMapColorsFile = false;
+						std::string color = optarg;
+						int l = color.length();
+						for (int i = 0; i < l; i++)
+							color[i] = tolower(color[i]);
+						if (color == "grey" || color == "gray")
+							generator.setHeightMapColor(Color(0, 0, 0), Color(255, 255, 255));
+						else if (color == "black")
+							generator.setHeightMapColor(Color(0, 0, 0), Color(0, 0, 0));
+						else if (color == "white")
+							generator.setHeightMapColor(Color(255, 255, 255), Color(255, 255, 255));
+						else
+							generator.setHeightMapColor(Color(0, 0, 0), Color(color, 0));
+						break;
+					}
+					else {
+						loadHeightMapColorsFile = true;
+					}
 					break;
 				case OPT_HEIGHTMAPYSCALE:
 					if (isdigit(optarg[0]) || ((optarg[0]=='-' || optarg[0]=='+') && isdigit(optarg[1]))) {
@@ -1053,7 +1088,14 @@ int main(int argc, char *argv[])
 	}
 
 	try {
-		parseColorsFile(generator, input, colorsFile);
+		if (heightMap) {
+			parseDataFile(generator, input, heightMapNodesFile, heightMapNodesDefaultFile, &TileGenerator::parseHeightMapNodesFile);
+			if (loadHeightMapColorsFile)
+				parseDataFile(generator, input, heightMapColorsFile, heightMapColorsDefaultFile, &TileGenerator::parseHeightMapColorsFile);
+		}
+		else {
+			parseDataFile(generator, input, nodeColorsFile, nodeColorsDefaultFile, &TileGenerator::parseNodeColorsFile);
+		}
 		generator.generate(input, output);
 	} catch(std::runtime_error e) {
 		std::cout<<"Exception: "<<e.what()<<std::endl;
