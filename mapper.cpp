@@ -113,6 +113,8 @@ void usage()
 			"\t\tyellow, magenta, fuchsia, cyan, aqua,\n"
 			"\t\torange, chartreuse, pink, violet, springgreen, azure\n"
 			"\t\tbrown (= 50% orange)\n"
+			"\tAs well as <color>[+-][wkrgbcmy]<n>, where n = 0.0..1.0 (or 1.00001 .. 255)\n"
+			"\t\t[+-][wkrgbcmy]<n> mixes in or out white, black, red, green, blue, cyan, magenta, yellow\n"
 			"Geometry formats:\n"
 			"\t<width>x<heigth>[+|-<xoffset>+|-<yoffset>]           (dimensions and corner)\n"
 			"\t<xoffset>,<yoffset>+<width>+<height>                 (corner and dimensions)\n"
