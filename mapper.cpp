@@ -36,6 +36,7 @@ using namespace std;
 #define OPT_HEIGHT_LEVEL0		0x8a
 #define OPT_HEIGHTMAPNODESFILE		0x8b
 #define OPT_HEIGHTMAPCOLORSFILE		0x8c
+#define OPT_DRAWHEIGHTSCALE		0x8d
 
 // Will be replaced with the actual name and location of the executable (if found)
 string executableName = "minetestmapper";
@@ -85,6 +86,7 @@ void usage()
 			"  --origincolor <color>\n"
 			"  --tilebordercolor <color>\n"
 			"  --drawscale[=left,top]\n"
+			"  --drawheightscale\n"
 			"  --drawplayers\n"
 			"  --draworigin\n"
 			"  --drawalpha[=cumulative|cumulative-darken|average|none]\n"
@@ -551,6 +553,7 @@ int main(int argc, char *argv[])
 		{"draworigin", no_argument, 0, 'R'},
 		{"drawplayers", no_argument, 0, 'P'},
 		{"drawscale", optional_argument, 0, 'S'},
+		{"drawheightscale", no_argument, 0, OPT_DRAWHEIGHTSCALE},
 		{"drawalpha", optional_argument, 0, 'e'},
 		{"drawair", no_argument, 0, OPT_DRAWAIR},
 		{"drawpoint", required_argument, 0, OPT_DRAW_OBJECT},
@@ -723,6 +726,9 @@ int main(int argc, char *argv[])
 					else {
 						generator.setDrawScale(DRAWSCALE_LEFT | DRAWSCALE_TOP);
 					}
+					break;
+				case OPT_DRAWHEIGHTSCALE :
+					generator.setDrawHeightScale(DRAWHEIGHTSCALE_BOTTOM);
 					break;
 				case 'v':
 					if (optarg && isdigit(optarg[0]) && optarg[1] == '\0') {

@@ -177,7 +177,9 @@ TileGenerator::TileGenerator():
 	m_tileHeight(0),
 	m_tileBorderSize(1),
 	m_tileMapXOffset(0),
-	m_tileMapYOffset(0)
+	m_tileMapYOffset(0),
+	m_surfaceHeight(INT_MIN),
+	m_surfaceDepth(INT_MAX)
 {
 	// Load default grey colors.
 	m_heightMapColors.push_back(HeightMapColor(INT_MIN, Color(0,0,0), -129, Color(0,0,0)));
@@ -298,7 +300,18 @@ void TileGenerator::setDrawPlayers(bool drawPlayers)
 
 void TileGenerator::setDrawScale(int scale)
 {
-	m_drawScale = (scale & DRAWSCALE_MASK);
+	m_drawScale = (scale & DRAWSCALE_MASK) | (m_drawScale & DRAWHEIGHTSCALE_MASK & ((~scale & DRAWSCALE_MASK) << 4));
+}
+
+void TileGenerator::setDrawHeightScale(int scale)
+{
+	unsigned s = scale;
+	int bits = 0;
+	for (; s; s >>= 1)
+		if ((s & 0x1)) bits++;
+	if (bits > 1)
+		throw std::runtime_error(std::string("Multiple height scale positions requested"));
+	m_drawScale = (scale & DRAWHEIGHTSCALE_MASK) | (m_drawScale & DRAWSCALE_MASK & ((~scale & DRAWHEIGHTSCALE_MASK) >> 4));
 }
 
 void TileGenerator::setDrawAlpha(bool drawAlpha)
@@ -436,8 +449,11 @@ void TileGenerator::generate(const std::string &input, const std::string &output
 	computeMapParameters(input);
 	createImage();
 	renderMap();
-	if (m_drawScale) {
+	if ((m_drawScale & DRAWSCALE_MASK)) {
 		renderScale();
+	}
+	if (m_heightMap && (m_drawScale & DRAWHEIGHTSCALE_MASK)) {
+		renderHeightScale();
 	}
 	if (m_drawOrigin) {
 		renderOrigin();
@@ -1406,6 +1422,29 @@ void TileGenerator::renderMap()
 		cout << std::setw(50) << "" << "\r";
 }
 
+Color TileGenerator::computeMapHeightColor(int height)
+{
+	int adjustedHeight = int((height - m_seaLevel) * m_heightMapYScale + 0.5);
+	float r = 0;
+	float g = 0;
+	float b = 0;
+	int n = 0;
+	for (HeightMapColorList::iterator i = m_heightMapColors.begin(); i != m_heightMapColors.end(); i++) {
+		HeightMapColor &colorSpec = *i;
+		if (adjustedHeight >= colorSpec.height[0] && adjustedHeight <= colorSpec.height[1]) {
+			float weight = (float) (colorSpec.height[1] - adjustedHeight + 1) / (colorSpec.height[1] - colorSpec.height[0] + 1);
+			for (int j = 0; j < 2; j++) {
+				r += colorSpec.color[j].r * weight;
+				g += colorSpec.color[j].g * weight;
+				b += colorSpec.color[j].b * weight;
+				weight = 1 - weight;
+			}
+			n++;
+		}
+	}
+	return Color(int(r / n + 0.5), int(g / n + 0.5), int(b / n + 0.5));
+}
+
 inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPos &pos, int version)
 {
 	checkBlockNodeDataLimit(version, mapBlock.length());
@@ -1438,26 +1477,12 @@ inline void TileGenerator::renderMapBlock(const ustring &mapBlock, const BlockPo
 				int height = pos.y * 16 + y;
 				if (m_heightMap) {
 					if (m_nodeIDColor[content] && nodeColor.a != 0) {
-						int adjustedHeight = int((height - m_seaLevel) * m_heightMapYScale + 0.5);
-						rowIsEmpty = false;
-						float r = 0;
-						float g = 0;
-						float b = 0;
-						int n = 0;
-						for (HeightMapColorList::iterator i = m_heightMapColors.begin(); i != m_heightMapColors.end(); i++) {
-							HeightMapColor &colorSpec = *i;
-							if (adjustedHeight >= colorSpec.height[0] && adjustedHeight <= colorSpec.height[1]) {
-								float weight = (float) (colorSpec.height[1] - adjustedHeight + 1) / (colorSpec.height[1] - colorSpec.height[0] + 1);
-								for (int j = 0; j < 2; j++) {
-									r += colorSpec.color[j].r * weight;
-									g += colorSpec.color[j].g * weight;
-									b += colorSpec.color[j].b * weight;
-									weight = 1 - weight;
-								}
-								n++;
-							}
+						if (!(m_readedPixels[z] & (1 << x))) {
+							if (height > m_surfaceHeight) m_surfaceHeight = height;
+							if (height < m_surfaceDepth) m_surfaceDepth = height;
 						}
-						pixel = PixelAttribute(Color(int(r / n + 0.5), int(g / n + 0.5), int(b / n + 0.5)), height);
+						rowIsEmpty = false;
+						pixel = PixelAttribute(computeMapHeightColor(height), height);
 						m_readedPixels[z] |= (1 << x);
 						break;
 					}
@@ -1507,7 +1532,7 @@ void TileGenerator::renderScale()
 			gdImageLine(m_image, xPos, 0, xPos, borderTop() - 1, color);
 		}
 	}
-	
+
 	if ((m_drawScale & DRAWSCALE_LEFT)) {
 		for (int i = (m_zMax / 4) * 4; i >= m_zMin; i -= 4) {
 			stringstream buf1, buf2;
@@ -1524,6 +1549,48 @@ void TileGenerator::renderScale()
 	}
 
 	// DRAWSCALE_RIGHT and DRAWSCALE_BOTTOM not implemented - getting the text positioned right seems not trivial (??)
+}
+
+void TileGenerator::renderHeightScale()
+{
+
+	int scaleColor = m_scaleColor.to_libgd();
+	int height_min = m_surfaceDepth - 16;
+	int height_limit = m_surfaceHeight + 16;
+	int xBorderOffset = borderLeft();
+	int yBorderOffset = borderTop() + m_pictHeight;
+	double height_step = (double)(height_limit - height_min) / m_pictWidth;
+	if (height_step < 1.0 / 16) {
+		height_step = 1.0 / 16;
+	}
+	double number_step = 64;
+	while (number_step / height_step < 48)
+		number_step *= 2;
+	while (number_step / height_step > 96)
+		number_step /= 2;
+
+	double height = height_min;
+	for (int x = 0; height < height_limit; x++, height += height_step) {
+		Color color = computeMapHeightColor(int(height + 0.5));
+		gdImageLine(m_image, xBorderOffset + x, yBorderOffset + 8, xBorderOffset + x, yBorderOffset + borderBottom() - 20, color.to_libgd());
+
+		int iheight = int(height + (height > 0 ? 0.5 : -0.5));
+		int iheight64 = int(iheight / number_step + (height > 0 ? 0.5 : -0.5)) * number_step;
+		if (fabs(height - iheight64) <= height_step / 2 && (height - iheight64) > -height_step / 2) {
+			if (iheight64 / int(number_step) % 2 == 1 && fabs(height) > 9999 && number_step / height_step < 56) {
+				// Maybe not enough room for the number. Draw a tick mark instead
+				gdImageLine(m_image, xBorderOffset + x, yBorderOffset + borderBottom() - 19, xBorderOffset + x, yBorderOffset + borderBottom() - 16, scaleColor);
+			}
+			else {
+				stringstream buf;
+				buf << iheight64;
+				string scaleText = buf.str();
+				gdImageString(m_image, gdFontGetMediumBold(), xBorderOffset + x + 2, yBorderOffset + borderBottom() - 16,
+					reinterpret_cast<unsigned char *>(const_cast<char *>(scaleText.c_str())), scaleColor);
+				gdImageLine(m_image, xBorderOffset + x, yBorderOffset + borderBottom() - 19, xBorderOffset + x, yBorderOffset + borderBottom() - 1, scaleColor);
+			}
+		}
+	}
 }
 
 void TileGenerator::renderOrigin()

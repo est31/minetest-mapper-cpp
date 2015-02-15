@@ -44,9 +44,15 @@
 #define DRAWSCALE_RIGHT			0x02
 #define DRAWSCALE_TOP			0x04
 #define DRAWSCALE_BOTTOM		0x08
+#define DRAWHEIGHTSCALE_MASK		0xf0
+#define DRAWHEIGHTSCALE_LEFT		0x10
+#define DRAWHEIGHTSCALE_RIGHT		0x20
+#define DRAWHEIGHTSCALE_TOP		0x40
+#define DRAWHEIGHTSCALE_BOTTOM		0x80
 
 #define SCALESIZE_HOR			40
 #define SCALESIZE_VERT			50
+#define HEIGHTSCALESIZE			60
 
 class TileGenerator
 {
@@ -116,6 +122,7 @@ public:
 	void setDrawOrigin(bool drawOrigin);
 	void setDrawPlayers(bool drawPlayers);
 	void setDrawScale(int scale);
+	void setDrawHeightScale(int scale);
 	void setDrawAlpha(bool drawAlpha);
 	void setDrawAir(bool drawAir);
 	void drawObject(const DrawObject &object) { m_drawObjects.push_back(object); }
@@ -138,6 +145,7 @@ public:
 	void setBackend(std::string backend);
 	void setChunkSize(int size);
 	void generate(const std::string &input, const std::string &output);
+	Color computeMapHeightColor(int height);
 
 private:
 	std::string getWorldDatabaseBackend(const std::string &input);
@@ -168,6 +176,7 @@ private:
 	void processMapBlock(const DB::Block &block);
 	void renderMapBlock(const ustring &mapBlock, const BlockPos &pos, int version);
 	void renderScale();
+	void renderHeightScale();
 	void renderOrigin();
 	void renderPlayers(const std::string &inputPath);
 	void renderDrawObjects();
@@ -179,10 +188,10 @@ private:
 	int worldZ2ImageY(int val) const;
 	int worldBlockX2StoredX(int xPos) const { return (xPos - m_xMin) * 16; }
 	int worldBlockZ2StoredY(int zPos) const { return (m_zMax - zPos) * 16; }
-	int borderTop() const { return ((m_drawScale & DRAWSCALE_TOP) ? SCALESIZE_HOR : 0); }
-	int borderBottom() const { return ((m_drawScale & DRAWSCALE_BOTTOM) ? SCALESIZE_HOR : 0); }
-	int borderLeft() const { return ((m_drawScale & DRAWSCALE_LEFT) ? SCALESIZE_VERT : 0); }
-	int borderRight() const { return ((m_drawScale & DRAWSCALE_RIGHT) ? SCALESIZE_VERT : 0); }
+	int borderTop() const { return ((m_drawScale & DRAWSCALE_TOP) ? SCALESIZE_HOR : 0) + (m_heightMap && (m_drawScale & DRAWHEIGHTSCALE_TOP) ? HEIGHTSCALESIZE : 0); }
+	int borderBottom() const { return ((m_drawScale & DRAWSCALE_BOTTOM) ? SCALESIZE_HOR : 0) + (m_heightMap && (m_drawScale & DRAWHEIGHTSCALE_BOTTOM) ? HEIGHTSCALESIZE : 0); }
+	int borderLeft() const { return ((m_drawScale & DRAWSCALE_LEFT) ? SCALESIZE_VERT : 0) + (m_heightMap && (m_drawScale & DRAWHEIGHTSCALE_LEFT) ? HEIGHTSCALESIZE : 0); }
+	int borderRight() const { return ((m_drawScale & DRAWSCALE_RIGHT) ? SCALESIZE_VERT : 0) + (m_heightMap && (m_drawScale & DRAWHEIGHTSCALE_RIGHT) ? HEIGHTSCALESIZE : 0); }
 
 	void parseDataFile(const std::string &fileName, int depth, const char *type,
 		void (TileGenerator::*parseLine)(const std::string &line, std::string name,
@@ -261,6 +270,8 @@ private:
 	int m_tileBorderYCount;
 	int m_pictWidth;
 	int m_pictHeight;
+	int m_surfaceHeight;
+	int m_surfaceDepth;
 	std::list<BlockPos> m_positions;
 	NodeID2NameMap m_nameMap;
 	static const ColorEntry *NodeColorNotDrawn;
