@@ -1356,7 +1356,7 @@ void TileGenerator::createImage()
 		for (int i = 0; i < m_tileBorderXCount; i++) {
 			int xPos = m_tileMapXOffset / m_scaleFactor + i * (m_tileWidth / m_scaleFactor + m_tileBorderSize);
 #ifdef DEBUG
-			int xPos2 = mapX2ImageX(m_tileMapXOffset / m_scaleFactor + i * m_tileWidth / m_scaleFactor) - borderLeft() - 1;
+			int xPos2 = mapX2ImageX(m_tileMapXOffset / m_scaleFactor + i * m_tileWidth / m_scaleFactor) - borderLeft() - m_tileBorderSize;
 			assert(xPos == xPos2);
 #endif
 			gdImageFilledRectangle(m_image, xPos + borderLeft(), borderTop(), xPos + (m_tileBorderSize-1) + borderLeft(), m_pictHeight + borderTop() - 1, borderColor);
@@ -1367,7 +1367,7 @@ void TileGenerator::createImage()
 		for (int i = 0; i < m_tileBorderYCount; i++) {
 			int yPos = m_tileMapYOffset / m_scaleFactor + i * (m_tileHeight / m_scaleFactor + m_tileBorderSize);
 #ifdef DEBUG
-			int yPos2 = mapY2ImageY(m_tileMapYOffset / m_scaleFactor + i * m_tileHeight / m_scaleFactor) - borderTop() - 1;
+			int yPos2 = mapY2ImageY(m_tileMapYOffset / m_scaleFactor + i * m_tileHeight / m_scaleFactor) - borderTop() - m_tileBorderSize;
 			assert(yPos == yPos2);
 #endif
 			gdImageFilledRectangle(m_image, borderLeft(), yPos + borderTop(), m_pictWidth + borderLeft() - 1, yPos + (m_tileBorderSize-1) + borderTop(), borderColor);
