@@ -16,8 +16,8 @@ Quick links (functional on github. Elsewhere possibly not):
 Features (short list)
 =====================
 
-Map Generation
---------------
+Map Generation Features
+-----------------------
 
 * Support for both minetest and freeminer worlds
 * Support for sqlite3, leveldb and redis map databases
@@ -33,8 +33,8 @@ Map Generation
 * Optionally draw some nodes transparently (e.g. water)
 * User Manual
 
-Building
---------
+Build Features
+--------------
 * Supports both the gcc and clang compiler suites
 * Build windows, rpm, deb and/or tar.gz installation
   packages. Or simply type 'make install'.
@@ -42,7 +42,46 @@ Building
 Quick Start
 ===========
 
-After installation, minetestmapper is started as follows:
+Install Dependencies
+--------------------
+
+Make sure the following packages are installed:
+
+**Libraries:**
+
+* libgd
+* sqlite3
+* leveldb (if leveldb support is desired)
+* hiredis (if redis support is desired)
+
+**Build environment:**
+
+* C++ compiler suite (clang or gcc)
+* cmake
+* make
+
+
+Compile
+-------
+
+Plain:
+
+::
+
+    cmake .
+    make
+
+With levelDB and Redis support:
+
+::
+
+    cmake -DENABLE_LEVELDB=true -DENABLE_REDIS=true .
+    make
+
+Generate a Map
+----------------
+
+After compilation, and optional installation, minetestmapper is started as follows:
 
 ('\\' is a continuation character - the command-line continues
 on the next line. Type return only after the line that does
@@ -82,5 +121,8 @@ following command to find out which:
 
 Manual
 ======
+
+For more elaborate compilation and installation documentation, please consult
+the build manual: `<doc/build-instruction.rst>`_.
 
 For more elaborate usage instruction, please consult the user manual: `<doc/manual.rst>`_.
